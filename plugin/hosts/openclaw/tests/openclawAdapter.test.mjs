@@ -17,7 +17,7 @@ entry.register({
     registerHttpRoute(route) {
         httpRoutes.push(route);
     },
-    on(hookName, handler, opts) {
+    registerHook(hookName, handler, opts) {
         registrations.push({ hookName, handler, opts });
     }
 });
@@ -67,7 +67,7 @@ assert.deepEqual(
 );
 
 for (const registration of registrations) {
-    assert.deepEqual(registration.opts, { priority: 0 });
+    assert.equal(registration.opts == null || registration.opts.priority === 0, true);
 }
 
 await registrations[0].handler({ context: { pluginConfig: { emitModelEvents: true, emitToolEvents: true } }, provider: "anthropic", model: "claude-sonnet-4", prompt: "must not leak" });

@@ -22,7 +22,7 @@ export default definePluginEntry({
     name: "OctoGlyphs",
     description: "Feeds a private OctoGlyphs companion tank from safe OpenClaw activity metadata.",
     register(api) {
-        api.registerControlUiDescriptor({
+        registerControlUiDescriptorIfAvailable(api as PluginApiWithOptionalControlUi, {
             id: "octoglyphs-companion",
             surface: "settings",
             label: "OctoGlyphs companion",
@@ -86,49 +86,81 @@ export default definePluginEntry({
             }
         });
 
-        api.on(
-            "model_call_started",
-            async (event: HookEvent) => {
-                const config = event.context?.pluginConfig;
+        registerHook(api as PluginApiWithHook, "model_call_started", async (event: HookEvent) => {
+            const config = event.context?.pluginConfig;
 
-                if (!shouldEmitModelEvents(config)) {
-                    return;
-                }
+            if (!shouldEmitModelEvents(config)) {
+                return;
+            }
 
-                emitOctoGlyphsEvent(config, createModelStartedEvent(event));
-            },
-            { priority: 0 }
-        );
+            emitOctoGlyphsEvent(config, createModelStartedEvent(event));
+        });
 
-        api.on(
-            "model_call_ended",
-            async (event: HookEvent) => {
-                const config = event.context?.pluginConfig;
+        registerHook(api as PluginApiWithHook, "model_call_ended", async (event: HookEvent) => {
+            const config = event.context?.pluginConfig;
 
-                if (!shouldEmitModelEvents(config)) {
-                    return;
-                }
+            if (!shouldEmitModelEvents(config)) {
+                return;
+            }
 
-                emitOctoGlyphsEvent(config, createModelEndedEvent(event));
-            },
-            { priority: 0 }
-        );
+            emitOctoGlyphsEvent(config, createModelEndedEvent(event));
+        });
 
-        api.on(
-            "after_tool_call",
-            async (event: HookEvent) => {
-                const config = event.context?.pluginConfig;
+        registerHook(api as PluginApiWithHook, "after_tool_call", async (event: HookEvent) => {
+            const config = event.context?.pluginConfig;
 
-                if (!shouldEmitToolEvents(config)) {
-                    return;
-                }
+            if (!shouldEmitToolEvents(config)) {
+                return;
+            }
 
-                emitOctoGlyphsEvent(config, createToolUsedEvent(event));
-            },
-            { priority: 0 }
-        );
+            emitOctoGlyphsEvent(config, createToolUsedEvent(event));
+        });
     }
 });
+
+type PluginApiWithOptionalControlUi = {
+    registerControlUiDescriptor?: (descriptor: {
+        id: string;
+        surface: "session" | "tool" | "run" | "settings";
+        label: string;
+        description?: string;
+        placement?: string;
+        schema?: unknown;
+    }) => void;
+};
+
+type PluginApiWithHook = {
+    registerHook?: (hookName: string, handler: (event: unknown) => Promise<void>) => void;
+    on?: (hookName: string, handler: (event: unknown) => Promise<void>, opts?: { priority: number }) => void;
+};
+
+function registerControlUiDescriptorIfAvailable(api: PluginApiWithOptionalControlUi, descriptor: {
+    id: string;
+    surface: "session" | "tool" | "run" | "settings";
+    label: string;
+    description?: string;
+    placement?: string;
+    schema?: unknown;
+}): void {
+    if (typeof api.registerControlUiDescriptor !== "function") {
+        return;
+    }
+
+    api.registerControlUiDescriptor(descriptor);
+}
+
+function registerHook(api: PluginApiWithHook, hookName: string, handler: (event: HookEvent) => Promise<void>): void {
+    const wrappedHandler = (event: unknown) => handler(event as HookEvent);
+
+    if (typeof api.registerHook === "function") {
+        api.registerHook(hookName, wrappedHandler);
+        return;
+    }
+
+    if (typeof api.on === "function") {
+        api.on(hookName, wrappedHandler, { priority: 0 });
+    }
+}
 
 function emitOctoGlyphsEvent(config: Record<string, unknown> | undefined, event: Record<string, unknown>): void {
     if (config?.debugSanitizedEvents === true) {

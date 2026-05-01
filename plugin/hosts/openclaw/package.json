@@ -29,8 +29,7 @@
         "pack:local": "npm pack"
     },
     "openclaw": {
-        "extensions": ["./src/index.ts"],
-        "runtimeExtensions": ["./dist/index.js"],
+        "extensions": ["./dist/index.js"],
         "compat": {
             "pluginApi": ">=2026.3.24-beta.2",
             "minGatewayVersion": "2026.3.24-beta.2"
