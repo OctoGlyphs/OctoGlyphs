@@ -180,7 +180,8 @@ body.plugin-mode .hud {
     box-sizing: border-box;
 }
 
-#loadout-panel .trait-panel-shell {
+#loadout-panel .trait-panel-shell,
+#shop-panel .trait-panel-shell {
     display: flex;
     flex-direction: column;
     overflow-y: auto;
@@ -190,7 +191,8 @@ body.plugin-mode .hud {
     -webkit-overflow-scrolling: touch;
 }
 
-#loadout-panel .trait-list {
+#loadout-panel .trait-list,
+#shop-panel .trait-list {
     overflow-y: visible;
     flex-shrink: 0;
 }
