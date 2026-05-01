@@ -39,7 +39,8 @@ const commandResult = await commands[0].handler({
         },
         plugins: {
             octoglyphs: {
-                gameUrl: "/octoglyphs"
+                gameUrl: "/octoglyphs",
+                companionPort: 18999
             }
         }
     },
@@ -47,8 +48,8 @@ const commandResult = await commands[0].handler({
     isAuthorizedSender: true
 });
 
-assert.equal(commandResult.text.includes("Open the tank: http://localhost:18888/octoglyphs"), true);
-assert.equal(commandResult.text.includes("Live event stream: http://localhost:18888/octoglyphs/stream"), true);
+assert.equal(commandResult.text.includes("Open the tank: http://localhost:18999/octoglyphs"), true);
+assert.equal(commandResult.text.includes("Live event stream: http://localhost:18999/octoglyphs/stream"), true);
 assert.equal(commandResult.text.includes("Gateway route: /octoglyphs"), true);
 assert.equal(commandResult.text.includes("prompts, responses, code"), true);
 

@@ -23,7 +23,12 @@
             "publicBaseUrl": {
                 "type": "string",
                 "default": "",
-                "description": "Optional public Gateway base URL for clickable OctoGlyphs links, for example https://openclaw.example.com. Defaults to http://localhost:<gateway.port>."
+                "description": "Optional public base URL for advanced proxy setups. Normal local users should leave this empty and use the plugin-owned localhost companion link."
+            },
+            "companionPort": {
+                "type": "integer",
+                "default": 18790,
+                "description": "Localhost port for the browser-openable OctoGlyphs companion tank."
             },
             "emitModelEvents": {
                 "type": "boolean",

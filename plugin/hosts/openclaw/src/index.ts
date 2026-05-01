@@ -1,6 +1,7 @@
 import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
 import { broadcastOctoGlyphsEvent, getOctoGlyphsStreamClientCount } from "./eventHub.js";
 import { handleOctoGlyphsRoute } from "./httpRoutes.js";
+import { ensureOctoGlyphsLocalServer } from "./localServer.js";
 import {
     createModelEndedEvent,
     createModelStartedEvent,
@@ -39,20 +40,24 @@ export default definePluginEntry({
             handler(ctx) {
                 const pluginConfig = readPluginConfig(ctx.config);
                 const gameUrl = getCompanionGameUrl(pluginConfig);
-                const publicGameUrl = getPublicCompanionGameUrl(pluginConfig, ctx.config);
+                const localGameUrl = ensureOctoGlyphsLocalServer(pluginConfig);
+                const publicGameUrl = getPublicCompanionGameUrl(pluginConfig) ?? localGameUrl;
+                const localStreamUrl = `${localGameUrl}/stream`;
                 const publicStreamUrl = `${publicGameUrl.replace(/\/$/, "")}/stream`;
 
                 return {
                     text: [
                         "OctoGlyphs companion is ready.",
                         "",
-                        `Open the tank: ${publicGameUrl}`,
-                        `Live event stream: ${publicStreamUrl}`,
+                        `Open the tank: ${localGameUrl}`,
+                        `Live event stream: ${localStreamUrl}`,
                         `Gateway route: ${gameUrl}`,
+                        publicGameUrl !== localGameUrl ? `Configured public route: ${publicGameUrl}` : undefined,
+                        publicGameUrl !== localGameUrl ? `Configured public stream: ${publicStreamUrl}` : undefined,
                         `Connected tank windows: ${getOctoGlyphsStreamClientCount()}`,
                         "",
                         "Privacy boundary: prompts, responses, code, file contents, diffs, terminal output, and secrets are never emitted. Only safe activity metadata reaches the tank."
-                    ].join("\n")
+                    ].filter(Boolean).join("\n")
                 };
             }
         });

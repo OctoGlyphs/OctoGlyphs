@@ -63,7 +63,13 @@ export function getCompanionGameUrl(config: OctoglyphsConfig | undefined): strin
     return config?.gameUrl ?? DEFAULT_GAME_URL;
 }
 
-export function getPublicCompanionGameUrl(config: OctoglyphsConfig | undefined, openClawConfig: unknown): string {
+export function getPublicCompanionGameUrl(config: OctoglyphsConfig | undefined): string | undefined {
+    const configuredPublicBaseUrl = normalizeUrl(config?.publicBaseUrl);
+
+    if (!configuredPublicBaseUrl) {
+        return undefined;
+    }
+
     const gameUrl = getCompanionGameUrl(config);
 
     if (/^https?:\/\//i.test(gameUrl)) {
@@ -71,22 +77,7 @@ export function getPublicCompanionGameUrl(config: OctoglyphsConfig | undefined, 
     }
 
     const normalizedPath = gameUrl.startsWith("/") ? gameUrl : `/${gameUrl}`;
-    const configuredPublicBaseUrl = normalizeUrl(config?.publicBaseUrl);
-
-    if (configuredPublicBaseUrl) {
-        return `${configuredPublicBaseUrl}${normalizedPath}`;
-    }
-
-    const gateway = readRecord(readRecord(openClawConfig)?.gateway);
-    const gatewayPublicBaseUrl = normalizeUrl(gateway?.publicBaseUrl ?? gateway?.baseUrl ?? gateway?.externalUrl ?? gateway?.url);
-
-    if (gatewayPublicBaseUrl) {
-        return `${gatewayPublicBaseUrl}${normalizedPath}`;
-    }
-
-    const port = readGatewayPort(gateway) ?? 18789;
-
-    return `http://localhost:${port}${normalizedPath}`;
+    return `${configuredPublicBaseUrl}${normalizedPath}`;
 }
 
 function compactEvent(event: UnknownRecord): OctoglyphsEvent {
@@ -221,20 +212,3 @@ function normalizeUrl(value: unknown): string | undefined {
     return trimmed;
 }
 
-function readGatewayPort(gateway: UnknownRecord | undefined): number | undefined {
-    const rawPort = gateway?.port;
-
-    if (typeof rawPort === "number" && Number.isInteger(rawPort) && rawPort > 0) {
-        return rawPort;
-    }
-
-    if (typeof rawPort === "string") {
-        const parsed = Number.parseInt(rawPort, 10);
-
-        if (Number.isInteger(parsed) && parsed > 0) {
-            return parsed;
-        }
-    }
-
-    return undefined;
-}
