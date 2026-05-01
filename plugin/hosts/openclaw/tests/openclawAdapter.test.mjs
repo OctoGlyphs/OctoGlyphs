@@ -34,6 +34,9 @@ assert.equal(commands[0].name, "octoglyphs");
 
 const commandResult = await commands[0].handler({
     config: {
+        gateway: {
+            port: 18888
+        },
         plugins: {
             octoglyphs: {
                 gameUrl: "/octoglyphs"
@@ -44,8 +47,9 @@ const commandResult = await commands[0].handler({
     isAuthorizedSender: true
 });
 
-assert.equal(commandResult.text.includes("Open the tank at: /octoglyphs"), true);
-assert.equal(commandResult.text.includes("Live event stream: /octoglyphs/stream"), true);
+assert.equal(commandResult.text.includes("Open the tank: http://localhost:18888/octoglyphs"), true);
+assert.equal(commandResult.text.includes("Live event stream: http://localhost:18888/octoglyphs/stream"), true);
+assert.equal(commandResult.text.includes("Gateway route: /octoglyphs"), true);
 assert.equal(commandResult.text.includes("prompts, responses, code"), true);
 
 const healthResponse = createTestResponse();

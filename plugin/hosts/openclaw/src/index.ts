@@ -6,6 +6,7 @@ import {
     createModelStartedEvent,
     createToolUsedEvent,
     getCompanionGameUrl,
+    getPublicCompanionGameUrl,
     shouldEmitModelEvents,
     shouldEmitToolEvents
 } from "./privacy.js";
@@ -38,13 +39,16 @@ export default definePluginEntry({
             handler(ctx) {
                 const pluginConfig = readPluginConfig(ctx.config);
                 const gameUrl = getCompanionGameUrl(pluginConfig);
+                const publicGameUrl = getPublicCompanionGameUrl(pluginConfig, ctx.config);
+                const publicStreamUrl = `${publicGameUrl.replace(/\/$/, "")}/stream`;
 
                 return {
                     text: [
                         "OctoGlyphs companion is ready.",
                         "",
-                        `Open the tank at: ${gameUrl}`,
-                        `Live event stream: ${gameUrl}/stream`,
+                        `Open the tank: ${publicGameUrl}`,
+                        `Live event stream: ${publicStreamUrl}`,
+                        `Gateway route: ${gameUrl}`,
                         `Connected tank windows: ${getOctoGlyphsStreamClientCount()}`,
                         "",
                         "Privacy boundary: prompts, responses, code, file contents, diffs, terminal output, and secrets are never emitted. Only safe activity metadata reaches the tank."

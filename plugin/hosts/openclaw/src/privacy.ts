@@ -9,6 +9,7 @@ type OctoglyphsEvent = {
 type OctoglyphsConfig = {
     enabled?: boolean;
     gameUrl?: string;
+    publicBaseUrl?: string;
     emitModelEvents?: boolean;
     emitToolEvents?: boolean;
     debugSanitizedEvents?: boolean;
@@ -60,6 +61,32 @@ export function createToolUsedEvent(event: UnknownRecord): OctoglyphsEvent {
 
 export function getCompanionGameUrl(config: OctoglyphsConfig | undefined): string {
     return config?.gameUrl ?? DEFAULT_GAME_URL;
+}
+
+export function getPublicCompanionGameUrl(config: OctoglyphsConfig | undefined, openClawConfig: unknown): string {
+    const gameUrl = getCompanionGameUrl(config);
+
+    if (/^https?:\/\//i.test(gameUrl)) {
+        return gameUrl;
+    }
+
+    const normalizedPath = gameUrl.startsWith("/") ? gameUrl : `/${gameUrl}`;
+    const configuredPublicBaseUrl = normalizeUrl(config?.publicBaseUrl);
+
+    if (configuredPublicBaseUrl) {
+        return `${configuredPublicBaseUrl}${normalizedPath}`;
+    }
+
+    const gateway = readRecord(readRecord(openClawConfig)?.gateway);
+    const gatewayPublicBaseUrl = normalizeUrl(gateway?.publicBaseUrl ?? gateway?.baseUrl ?? gateway?.externalUrl ?? gateway?.url);
+
+    if (gatewayPublicBaseUrl) {
+        return `${gatewayPublicBaseUrl}${normalizedPath}`;
+    }
+
+    const port = readGatewayPort(gateway) ?? 18789;
+
+    return `http://localhost:${port}${normalizedPath}`;
 }
 
 function compactEvent(event: UnknownRecord): OctoglyphsEvent {
@@ -170,4 +197,44 @@ function categorizeToolName(name: string): string {
     }
 
     return "other";
+}
+
+function readRecord(value: unknown): UnknownRecord | undefined {
+    if (value == null || typeof value !== "object" || Array.isArray(value)) {
+        return undefined;
+    }
+
+    return value as UnknownRecord;
+}
+
+function normalizeUrl(value: unknown): string | undefined {
+    if (typeof value !== "string") {
+        return undefined;
+    }
+
+    const trimmed = value.trim().replace(/\/$/, "");
+
+    if (!/^https?:\/\//i.test(trimmed)) {
+        return undefined;
+    }
+
+    return trimmed;
+}
+
+function readGatewayPort(gateway: UnknownRecord | undefined): number | undefined {
+    const rawPort = gateway?.port;
+
+    if (typeof rawPort === "number" && Number.isInteger(rawPort) && rawPort > 0) {
+        return rawPort;
+    }
+
+    if (typeof rawPort === "string") {
+        const parsed = Number.parseInt(rawPort, 10);
+
+        if (Number.isInteger(parsed) && parsed > 0) {
+            return parsed;
+        }
+    }
+
+    return undefined;
 }

@@ -18,7 +18,12 @@
             "gameUrl": {
                 "type": "string",
                 "default": "/octoglyphs",
-                "description": "Gateway-hosted OctoGlyphs companion URL. Advanced users may override for local development."
+                "description": "Gateway-hosted OctoGlyphs route path. Advanced users may override for local development."
+            },
+            "publicBaseUrl": {
+                "type": "string",
+                "default": "",
+                "description": "Optional public Gateway base URL for clickable OctoGlyphs links, for example https://openclaw.example.com. Defaults to http://localhost:<gateway.port>."
             },
             "emitModelEvents": {
                 "type": "boolean",
