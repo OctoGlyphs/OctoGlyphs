@@ -6,7 +6,98 @@ This file is the chronological handoff record for OctoGlyphs. Read this first wh
 
 OctoGlyphs Phase 1 is implemented through all core systems plus the Isaac-style composable bullet flag system, named synergy set bonuses, starting-power rebalance, loadout/shop sorting quality-of-life, media support, readable shallow/deep hunt backgrounds, hardened endless-wave transitions, expanded enemy variety, boss patterns, difficulty events, explicit XP breakpoints, smarter upgrade draft logic, Step 9 boss reward choices, Step 10 real-data hunt recap, Step 11 enemy behavior variety, the sprite-shaped pickup glow pass, Step 12 mutation feel pass one, and octo boss projectile patterns. Every single trait in the catalog (30 bodies, 30 eyes, 92 hats, 14 clothes, 24 boosts, 10 legendaries, 4 halloween) now has unique `huntMods` that flip composable bullet flags. No item is "just +Luck 0.03x" anymore — every item changes how the hunt plays.
 
-### Latest: Standard OpenClaw Install Package Prep Committed
+### Latest: Fix Shop Header Flow and Keep Music
+- **Commit**: `ce46217` in the public `OctoGlyphs/OctoGlyphs` release repo (`Fix shop header flow and keep music`).
+- **Changed**: Restored bundled music in the OpenClaw plugin packaging step while still excluding unused background variants. Hardened the shop/loadout panel layout by forcing shell children to normal flex sizing, changing panel headers from flex to a defensive grid layout, stacking the shop title/actions vertically, and forcing shop tabs/sort/list to remain in normal document flow.
+- **Why**: Ed's screenshot showed the shop title, action buttons, category buttons, sort controls, and first item overlapping at the top even after the general unified-scroll fix. The header needed explicit flow constraints instead of relying on flex behavior. Also, removing music was too aggressive because previous installs had worked with music included; the package should only strip clear unused backgrounds until proven otherwise.
+- **Verification**: `npm run build`, `npm run typecheck`, `npm test`, `npm pack --dry-run`, and `npm pack` passed from `~/Desktop/octoglyphs-release/plugin/hosts/openclaw`. Packed tarball with music restored is about 35.7 MB.
+- **What's next**: Push `ce46217`, then Ed pulls on Mac, rebuilds/re-packs/reinstalls with `--force`, restarts gateway, hard-refreshes the tank, and retests the shop at 100% zoom first.
+
+### Previous: Slim OpenClaw Plugin Package
+- **Commit**: `164fd4d` in the public `OctoGlyphs/OctoGlyphs` release repo (`Slim OpenClaw plugin package`).
+- **Changed**: Reduced OpenClaw plugin package from about 50 MB to about 6.7 MB by removing bundled MP3 music and unused background variants from the packaged game. The game now preloads only one shallow and one deep hunt background, and plugin packaging strips the other background PNGs plus `octosong*.mp3` while keeping mute/unmute icons.
+- **Why**: Fresh Mac install timed out while extracting/installing the 49.8 MB tarball (`extract tar timed out after 120000ms`). The plugin needs to stay small for OpenClaw's extension installer.
+- **Verification**: `npm run build`, `npm run typecheck`, `npm test`, and `npm pack` passed from `~/Desktop/octoglyphs-release/plugin/hosts/openclaw`. Packed tarball is now 6.7 MB.
+- **What's next**: Superseded by `ce46217`, which restores music and fixes shop header flow while still excluding unused backgrounds.
+
+### Previous: Fix Panel Overlap (gap missing from flex layout)
+- **Commit**: `26f8ca4` in the public `OctoGlyphs/OctoGlyphs` release repo (`Fix loadout/shop panel overlap: add gap to flex layout`).
+- **Changed**: Added `gap: 10px` to the flex override for `#loadout-panel .trait-panel-shell` and `#shop-panel .trait-panel-shell`. The previous unified-scroll commits (793e747, 432a970) switched from grid to flex but dropped the `gap` property, causing all child sections (header, tabs, sort, items) to stack without spacing and overlap visually.
+- **Why**: After the flex conversion, titles and buttons were jumbled/overlapping at the top of both loadout and shop panels because flex doesn't inherit gap from the grid it replaced.
+- **Verification**: `npm --prefix game run build -- --logLevel warn` passed; only expected Vite chunk-size warning.
+- **What's next**: Ed pulls on Mac, rebuilds plugin, tests both shop and loadout panels — sections should now be clearly spaced apart.
+
+### Previous: Shop + Loadout Unified Scroll
+- **Commit**: `432a970` in the public `OctoGlyphs/OctoGlyphs` release repo (`Shop panel: unified scroll (same fix as loadout)`).
+- **Changed**: Extended the loadout unified-scroll fix to also cover `#shop-panel .trait-panel-shell`. Both panels now use flex-column + overflow-y:auto on the shell, with `.trait-list` set to overflow-y:visible + flex-shrink:0. Previously only loadout was fixed (793e747); shop still used the old grid layout causing the same cramped scroll issue. Also fixes the loadout reverting to cramped after buying a trait (purchase re-renders loadout which now correctly inherits the flex rule).
+- **Why**: After buying a trait in the shop the loadout showed the same cramped layout, and the shop itself had the identical tiny-scroll-area problem.
+- **Verification**: `npm --prefix game run build -- --logLevel warn` passed; only expected Vite chunk-size warning.
+- **What's next**: Fixed in 26f8ca4 — gap was missing.
+
+### Previous: Simulate Hidden Activity Gem Collection
+- **Commit**: `5039a23` in the public `OctoGlyphs/OctoGlyphs` release repo (`Simulate hidden activity gem collection`).
+- **Changed**: Replaced instant hidden-tab activity rewards with a timestamped background gem ledger. When the tank is hidden/unfocused outside Tank Hunt, prompt/response/tool activity now creates gems with real spawn positions, values, and estimated collection deadlines based on octo swim speed. If enough real time passes while the user remains in OpenClaw, the ledger awards those gems and moves the virtual octo forward. If the user returns early, uncollected ledger gems materialize in their stored positions for visible collection.
+- **Why**: Instant background rewards worked mechanically but felt fake and empty. The desired behavior is causal: send a prompt then immediately check the tank and the gems should still be there; stay in OpenClaw long enough and octo should have collected them by elapsed time.
+- **Verification**: `npm --prefix game run build -- --logLevel warn` passed from the release checkout, and `npm run typecheck && npm test && npm pack --dry-run` passed from `~/Desktop/octoglyphs-release/plugin/hosts/openclaw`; only the expected Vite chunk-size warning and stale local companion port warning remain.
+- **What's next**: Have Ed pull `5039a23` on the Mac, rebuild/repack/reinstall with `--force`, restart the gateway, then test two flows: send a prompt and immediately return to the tank to confirm gems are visible; send a prompt and wait in OpenClaw long enough to confirm gems are auto-collected by elapsed time.
+
+### Previous: Collect Background Activity Gems
+- **Commit**: `e6e2ea6` in the public `OctoGlyphs/OctoGlyphs` release repo (`Collect background activity gems`).
+- **Changed**: Added hidden/unfocused tank handling. Outside Tank Hunt, activity events now award the same gem value directly into the wallet instead of relying on Phaser movement/overlap collection while the browser is throttled. On refocus, the tank shows a catch-up notice with how many activity gems were collected. During Tank Hunt, visibility loss pauses physics and hunt timers, then resumes them when the tank is visible again.
+- **Why**: Fresh OpenClaw testing showed gems spawn from prompts/responses, but the octo does not reliably swim to collect them when the browser is not focused. Browser throttling pauses or slows Phaser update loops, so progression must not depend on background animation. Hunt mode remains paused because it is active gameplay and should not silently progress while the user is elsewhere.
+- **Verification**: `npm --prefix game run build -- --logLevel warn` passed from the release checkout, and `npm run typecheck && npm test && npm pack --dry-run` passed from `~/Desktop/octoglyphs-release/plugin/hosts/openclaw`; only the expected Vite chunk-size warning and stale local companion port warning remain.
+- **What's next**: Have Ed pull `e6e2ea6` on the Mac, rebuild/repack/reinstall with `--force`, restart the gateway, open the tank, click away to OpenClaw, send prompts, then refocus the tank and verify the wallet/notice reflects background collection. Also confirm Tank Hunt pauses when hidden and resumes when visible.
+
+### Previous: Include Runtime Bullet and Boost Assets
+- **Commit**: `ce315cd` in the public `OctoGlyphs/OctoGlyphs` release repo (`Include runtime bullet and boost assets`).
+- **Changed**: Adjusted the OpenClaw plugin packaging step so it no longer strips `public/assets/raw/Bullets` or `public/assets/raw/octos player assets` from the bundled tank. The package still removes nonessential raw Halloween/enemy/gem/old-cycle/UI/background extras, but keeps the runtime-required bullet GIFs and boost/throwable PNGs that Phaser preloads from `assetCatalog.js`.
+- **Why**: Fresh Mac testing showed the tank now loads and gems spawn, but browser console had 404s for `assets/raw/Bullets/*.gif` and `assets/raw/octos player assets/Throwables/*.png`. Those files existed in the game build but were deleted by the plugin `copy:game` slimming command, so equipped bullets/boost icons could not render in the installed plugin.
+- **Verification**: `npm run typecheck && npm test && npm pack --dry-run` passed from `~/Desktop/octoglyphs-release/plugin/hosts/openclaw`; only the expected Vite chunk-size warning and stale local companion port warning remain.
+- **What's next**: Have Ed pull `ce315cd` on the Mac, rebuild/repack/reinstall with `--force`, restart the gateway, open the tank, confirm prompts/responses still spawn gems, and verify the console no longer reports 404s for bullets or throwables.
+
+### Previous: Emit Prompt Events for OctoGlyphs Gems
+- **Commit**: `bba385d` in the public `OctoGlyphs/OctoGlyphs` release repo (`Emit prompt events for OctoGlyphs gems`).
+- **Changed**: Added a sanitized `before_prompt_build` hook that emits `prompt.sent` metadata to the tank, switched lifecycle hook registration to prefer the documented `api.on(...)` plugin hook path before legacy `registerHook(...)`, and expanded the adapter test to verify `prompt.sent` reaches the SSE stream without leaking prompt text.
+- **Why**: The fresh Mac now loads the actual game, but prompts did not spawn gems. The game awards gems from `prompt.sent`, `response.chunk`, `response.completed`, and `tool.used`; the plugin was only emitting response/tool events, and `response.started` does not create gems. If model/token metadata is sparse, a normal prompt can therefore produce no visible gem spawn.
+- **Verification**: `npm run typecheck && npm test && npm pack --dry-run` passed from the clean release checkout at `~/Desktop/octoglyphs-release/plugin/hosts/openclaw`; only the expected Vite chunk-size warning remains.
+- **What's next**: Have Ed pull `bba385d` on the Mac, rebuild/repack/reinstall with `--force`, restart the gateway, open the tank, run `/octoglyphs` to confirm one connected tank window, then send a normal prompt and verify gems spawn.
+
+### Previous: Fix OctoGlyphs Local Asset Serving
+- **Commit**: `83e1d96` in the public `OctoGlyphs/OctoGlyphs` release repo (`Fix OctoGlyphs local asset serving`).
+- **Changed**: The plugin-owned localhost tank server now serves both `/assets/...` and `/octoglyphs/assets/...` static bundle paths, and the local server calls `unref()` so the adapter test cannot keep Node alive and block the Mac command chain before `npm run pack:local`.
+- **Why**: Ed's screenshot was not another Unauthorized failure; it showed the HTML shell/text/buttons loading without the real Phaser game. That meant the browser reached the local page, but Vite-built JS/CSS asset URLs were not being served correctly. The Mac reinstall command also stopped after `OpenClaw adapter contract assertions passed` because the test-created companion server held the Node process open.
+- **Verification**: `npm run typecheck && npm test && npm pack --dry-run` passed from the clean release checkout at `~/Desktop/octoglyphs-release/plugin/hosts/openclaw`; only the expected Vite chunk-size warning remains.
+- **What's next**: Have Ed pull `83e1d96` on the fresh Mac, rebuild/repack/reinstall with `--force`, restart the gateway, run `/octoglyphs`, click `http://localhost:18790/octoglyphs`, and confirm the actual game canvas appears instead of only text/buttons.
+
+### Previous: Make OpenClaw Tank Route Browser Accessible
+- **Commit**: `12ce54b` in the public `OctoGlyphs/OctoGlyphs` release repo (`Make OctoGlyphs tank route browser accessible`).
+- **Changed**: Switched the `/octoglyphs` HTTP route registration from `auth: "gateway"` to `auth: "plugin"` and updated the OpenClaw adapter contract test accordingly.
+- **Why**: Ed's fresh Mac clicked the new full localhost link and got `{"error":{"message":"Unauthorized","type":"unauthorized"}}`. That proved a normal browser tab cannot open a gateway-auth plugin route, even though the `/octoglyphs` command works inside OpenClaw. The tank route must be browser-openable while the plugin itself still only emits sanitized metadata.
+- **Verification**: `npm run typecheck && npm test` passed from the clean release checkout at `~/Desktop/octoglyphs-release/plugin/hosts/openclaw`; only the expected Vite chunk-size warning remains.
+- **What's next**: Push `12ce54b`, have Ed pull on the fresh Mac, rebuild/reinstall with `--force`, restart the gateway, click the full URL again, and confirm the tank loads plus connected windows increments.
+
+### Previous: Make OpenClaw Tank Link Clickable
+- **Commit**: `c4bcc79` in the public `OctoGlyphs/OctoGlyphs` release repo (`Make OpenClaw tank link clickable`) and `e3f1a75` in the main PrimordialAI repo.
+- **Changed**: Updated the OpenClaw `/octoglyphs` command so it prints a full URL like `http://localhost:<gateway.port>/octoglyphs` instead of only the relative `/octoglyphs` route. Added `publicBaseUrl` plugin config for remote/proxied gateways, kept the raw gateway route visible for diagnostics, and expanded the adapter test to verify full clickable tank and stream URLs.
+- **Why**: Ed's fresh Mac install proved the command now works, but the response showed `Open the tank at: /octoglyphs`, which is not useful for normal users because it may not render as a clickable link and does not tell them which Gateway host/port to open.
+- **Verification**: `npm run typecheck && npm test` passed from both the clean release checkout at `~/Desktop/octoglyphs-release/plugin/hosts/openclaw` and the main PrimordialAI checkout at `PrimordialAI/octoglyphs/plugin/hosts/openclaw`; only the expected Vite chunk-size warning remains.
+- **What's next**: Commit and push this link polish to `OctoGlyphs/OctoGlyphs`, then have Ed pull on the fresh Mac, rebuild/reinstall with `--force`, restart the gateway, and confirm `/octoglyphs` now returns a clickable full URL.
+
+### Previous: Remove Unstable OpenClaw Control UI Registration
+- **Commit**: `e04feca` in the public `OctoGlyphs/OctoGlyphs` release repo (`Remove unstable OpenClaw control UI registration`).
+- **Changed**: Removed `api.registerControlUiDescriptor(...)` from the OpenClaw runtime entry entirely and updated the adapter contract test to expect no Control UI descriptor registration.
+- **Why**: Ed's fresh Mac retest on OpenClaw `2026.4.23` still failed during plugin registration with `TypeError: api.registerControlUiDescriptor is not a function`, which means that OpenClaw runtime/version path cannot safely tolerate this registration yet. The plugin already exposes user settings through `openclaw.plugin.json` `configSchema`, so Control UI is nonessential for the first install path.
+- **Verification**: `npm run typecheck && npm test` passed from the clean release checkout at `~/Desktop/octoglyphs-release/plugin/hosts/openclaw`; only the expected Vite chunk-size warning remains.
+- **What's next**: Have Ed pull `e04feca` on the fresh Mac, rebuild, reinstall with `--force`, restart gateway, and retest `/octoglyphs`. If another runtime API fails, strip back to the minimal stable docs path: HTTP route plus command plus hook registrations only.
+
+### Previous: OpenClaw Fresh-Machine Runtime Fix
+- **Commit**: `6f73c84` in the public `OctoGlyphs/OctoGlyphs` release repo (`Fix OpenClaw runtime plugin entry`).
+- **Changed**: Fixed the external release package so OpenClaw installs the compiled runtime entry from `./dist/index.js` instead of trying to load `./src/index.ts`, switched hook registration to the documented `api.registerHook(...)` path with fallback for older `api.on(...)`, and made the optional Control UI descriptor feature-detected so older OpenClaw builds do not fail registration.
+- **Why**: Ed's fresh Mac install proved packaging/build worked, but OpenClaw `2026.4.23` reported `extension entry not found: ./src/index.ts` and then failed registration because `api.registerControlUiDescriptor` was unavailable in that installed runtime.
+- **Verification**: `npm run typecheck && npm test` passed from both `PrimordialAI/octoglyphs/plugin/hosts/openclaw` and the clean release checkout at `/home/crai/Desktop/octoglyphs-release/plugin/hosts/openclaw`; only the expected Vite chunk-size warning remains.
+- **What's next**: Have Ed pull latest on the fresh machine, reinstall with `--force` if OpenClaw says the plugin already exists, restart gateway, then test `/octoglyphs`, `/octoglyphs/health`, and real tank event spawning.
+
+### Previous: Standard OpenClaw Install Package Prep Committed
 - **Commit**: `90bc917` (`Prepare OpenClaw standard install package`).
 - **Changed**: Made the OpenClaw host package publish/install-ready for the fresh-machine path. The package is now public, declares explicit npm `files` so compiled `dist/`, bundled `public/`, manifest, and docs are included, adds `prepack`, keeps generated `.tgz` files out of git, trims unused raw source asset folders during package build, and updates README/fresh-machine instructions for tarball install testing.
 - **Why**: A normal OpenClaw user should install one plugin package and not run the Phaser/Vite server separately. The tarball path is the closest pre-publish simulation of the future npm or ClawHub install.
@@ -1514,3 +1605,19 @@ Next: test wave 5 red shark against normal and high-speed loadouts. If it still 
 **Build**: `npm run build` passes from `PrimordialAI/game` with only the expected Vite chunk-size warning.
 
 **What's next**: Browser-test normal and hunt gem pickups. If the glow is too busy during dense waves, reduce sparkle count and outer glow alpha while keeping the bright core shimmer.
+
+## 2026-05-01 — OpenClaw Tank Browser Route Fix
+
+**What**: Updated the public OctoGlyphs OpenClaw plugin so the tank opens from a plugin-owned localhost companion server instead of relying on OpenClaw gateway browser auth.
+
+- Added a local companion HTTP server on `http://localhost:18790/octoglyphs` with configurable `companionPort`.
+- Changed `/octoglyphs` command output to prefer the local browser-openable tank and stream links.
+- Kept the gateway route as a secondary/debug route, but stopped using it as the primary clickable user link.
+- Updated package config schema and adapter test coverage.
+- Pushed public release commit `0d30885` to `https://github.com/OctoGlyphs/OctoGlyphs.git`.
+
+**Why**: Fresh-machine testing showed OpenClaw 2026.4.23 returns `Unauthorized` when a normal browser clicks the gateway `/octoglyphs` route. The tank needs to be one-click openable without requiring hidden OpenClaw auth headers.
+
+**Verification**: `npm run typecheck` and `npm run build:plugin && node tests/openclawAdapter.test.mjs` pass in the OctoGlyphs release plugin checkout.
+
+**What's next**: User should `git pull`, rebuild/repack, reinstall with `--force`, restart the gateway, run `/octoglyphs`, and click the new `http://localhost:18790/octoglyphs` link. Confirm the page loads and connected tank windows increments.
