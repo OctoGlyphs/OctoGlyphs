@@ -184,6 +184,7 @@ body.plugin-mode .hud {
 #shop-panel .trait-panel-shell {
     display: flex;
     flex-direction: column;
+    gap: 10px;
     overflow-y: auto;
     overscroll-behavior: contain;
     scrollbar-color: #77e8ff rgba(120, 225, 255, 0.08);
