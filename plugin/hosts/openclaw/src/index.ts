@@ -5,6 +5,7 @@ import { ensureOctoGlyphsLocalServer } from "./localServer.js";
 import {
     createModelEndedEvent,
     createModelStartedEvent,
+    createPromptSentEvent,
     createToolUsedEvent,
     getCompanionGameUrl,
     getPublicCompanionGameUrl,
@@ -62,6 +63,16 @@ export default definePluginEntry({
             }
         });
 
+        registerHook(api as PluginApiWithHook, "before_prompt_build", async (event: HookEvent) => {
+            const config = event.context?.pluginConfig;
+
+            if (!shouldEmitModelEvents(config)) {
+                return;
+            }
+
+            emitOctoGlyphsEvent(config, createPromptSentEvent(event));
+        });
+
         registerHook(api as PluginApiWithHook, "model_call_started", async (event: HookEvent) => {
             const config = event.context?.pluginConfig;
 
@@ -102,13 +113,13 @@ type PluginApiWithHook = {
 function registerHook(api: PluginApiWithHook, hookName: string, handler: (event: HookEvent) => Promise<void>): void {
     const wrappedHandler = (event: unknown) => handler(event as HookEvent);
 
-    if (typeof api.registerHook === "function") {
-        api.registerHook(hookName, wrappedHandler);
+    if (typeof api.on === "function") {
+        api.on(hookName, wrappedHandler, { priority: 0 });
         return;
     }
 
-    if (typeof api.on === "function") {
-        api.on(hookName, wrappedHandler, { priority: 0 });
+    if (typeof api.registerHook === "function") {
+        api.registerHook(hookName, wrappedHandler);
     }
 }
 
