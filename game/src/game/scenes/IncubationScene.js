@@ -526,6 +526,11 @@ export class IncubationScene extends Scene {
         this.lastTankMutationRoles = [];
         this.tankBossRewardChoiceActive = false;
         this.tankBossRewardContainer = null;
+        this.backgroundCollectedGems = 0;
+        this.backgroundCollectedValue = 0;
+        this.backgroundCollectedByType = {};
+        this.isPageHidden = typeof document !== "undefined" && document.visibilityState === "hidden";
+        this.visibilityPauseStartedAt = 0;
     }
 
     create() {
@@ -583,6 +588,12 @@ export class IncubationScene extends Scene {
         this.game.events.on("octoglyphs:query-hunt-charge", () => this.emitTankHuntCharge());
         this.game.events.on("octoglyphs:equip", assetId => this.equipPersistent(assetId));
         this.game.events.on("octoglyphs:save-changed", () => this.refreshSave());
+        if (typeof document !== "undefined") {
+            this.handleVisibilityChange = () => this.onVisibilityChanged();
+            document.addEventListener("visibilitychange", this.handleVisibilityChange);
+            window.addEventListener("blur", this.handleVisibilityChange);
+            window.addEventListener("focus", this.handleVisibilityChange);
+        }
 
         this.time.addEvent({ delay: 320, loop: true, callback: () => this.autopilot() });
         this.time.addEvent({ delay: 45, loop: true, callback: () => this.animateGems() });
@@ -916,12 +927,13 @@ export class IncubationScene extends Scene {
         const promptTokens = Number(event.prompt_tokens || Math.ceil(promptChars / 4) || 0);
         const promptScale = Math.max(promptTokens, Math.ceil(promptChars / 4));
         const count = PhaserMath.Clamp(Math.ceil(promptScale / 70), 3, 16);
+        const gemType = promptScale > 900 ? "silver" : "green";
 
         this.save.lifetime.prompts += 1;
         this.save.lifetime.tankHuntCharges = Number(this.save.lifetime.tankHuntCharges || 0) + 1;
         this.save.lifetime.tokens += promptTokens;
 
-        for (let i = 0; i < count; i += 1) this.spawnGem(1, promptScale > 900 ? "silver" : "green");
+        this.awardOrSpawnGems(count, gemType);
 
         this.mass = 1 + Math.min(0.65, this.save.lifetime.tokens / 160000);
         this.applyLoadoutSprites();
@@ -932,7 +944,7 @@ export class IncubationScene extends Scene {
 
     onChunk() {
         this.save.lifetime.chunks += 1;
-        this.spawnGem(1, "green");
+        this.awardOrSpawnGems(1, "green");
         this.emitState();
         saveGame(this.save);
     }
@@ -942,12 +954,13 @@ export class IncubationScene extends Scene {
         const chunkCount = Number(event.chunk_count || 0);
         const durationMs = Number(event.duration_ms || 0);
         const count = PhaserMath.Clamp(Math.floor((completionTokens + durationMs / 25) / 220), 3, 18);
+        const gemType = completionTokens > 1400 ? "pink" : this.pickGemType(0, completionTokens);
 
         this.save.lifetime.tokens += completionTokens;
 
-        for (let i = 0; i < count; i += 1) this.spawnGem(1, completionTokens > 1400 ? "pink" : this.pickGemType(0, completionTokens));
+        this.awardOrSpawnGems(count, gemType);
 
-        if (completionTokens >= 900 || chunkCount >= 32 || durationMs >= 18000 || PhaserMath.Between(1, 100) <= 12 * this.stats.luck) this.spawnTraitDiscovery();
+        if (!this.isBackgroundCollectMode() && (completionTokens >= 900 || chunkCount >= 32 || durationMs >= 18000 || PhaserMath.Between(1, 100) <= 12 * this.stats.luck)) this.spawnTraitDiscovery();
 
         this.mass = 1 + Math.min(0.65, this.save.lifetime.tokens / 160000);
         this.applyLoadoutSprites();
@@ -959,31 +972,31 @@ export class IncubationScene extends Scene {
         const gemByTool = {
             file_read: "blue",
             file_write: "silver",
-            shell: "orange",
+            shell: "yellow",
             web: "blue",
-            build: "gold",
-            test: "gold",
+            build: "yellow",
+            test: "yellow",
             git: "pink",
             search: "blue",
-            memory: "purple",
+            memory: "silver",
             other: "green"
         };
         const type = gemByTool[event.tool_kind] || "green";
         const count = event.success === false ? 1 : 2;
-        this.spawnGem(count, type);
+        this.awardOrSpawnGems(count, type);
         this.emitState();
     }
 
     onBuildFinished(event) {
-        this.spawnGem(event.success ? 5 : 2, event.success ? "gold" : "orange");
-        if (event.success && Number(event.duration_ms || 0) > 10000) this.spawnTraitDiscovery();
+        this.awardOrSpawnGems(event.success ? 5 : 2, event.success ? "yellow" : "green");
+        if (!this.isBackgroundCollectMode() && event.success && Number(event.duration_ms || 0) > 10000) this.spawnTraitDiscovery();
         this.emitState();
     }
 
     onCommitCreated(event) {
         const changed = Number(event.files_changed_count || 0);
         const count = PhaserMath.Clamp(3 + changed, 4, 14);
-        this.spawnGem(count, "pink");
+        this.awardOrSpawnGems(count, "pink");
         this.emitState();
     }
 
@@ -998,6 +1011,42 @@ export class IncubationScene extends Scene {
             if (roll <= cursor) return type;
         }
         return "green";
+    }
+
+    awardOrSpawnGems(count, type = "green") {
+        if (this.isBackgroundCollectMode()) {
+            this.collectBackgroundGems(count, type);
+            return;
+        }
+        this.spawnGem(count, type);
+    }
+
+    collectBackgroundGems(count, type = "green") {
+        const gemDef = GEM_TYPES[type] || GEM_TYPES.green;
+        const safeCount = Math.max(0, Math.floor(count || 0));
+        if (safeCount <= 0) return;
+
+        const valuePerGem = Math.max(1, Math.round((gemDef.value || 1) * this.stats.gemValue));
+        const totalValue = safeCount * valuePerGem;
+        addGemValue(this.save, type, totalValue);
+        this.backgroundCollectedGems += safeCount;
+        this.backgroundCollectedValue += totalValue;
+        this.backgroundCollectedByType[type] = (this.backgroundCollectedByType[type] || 0) + totalValue;
+        saveGame(this.save);
+        triggerFTUE("firstGem", this.save);
+    }
+
+    flushBackgroundCollectedGems() {
+        if (!this.backgroundCollectedGems) return;
+
+        const gemCount = this.backgroundCollectedGems;
+        const gemValue = this.backgroundCollectedValue;
+        this.backgroundCollectedGems = 0;
+        this.backgroundCollectedValue = 0;
+        this.backgroundCollectedByType = {};
+        this.showCenterTraitText(`Collected ${gemValue} gem value while away`);
+        this.game.events.emit("octoglyphs:notice", `Octo collected ${gemCount} activity gem${gemCount === 1 ? "" : "s"} while you were away.`);
+        this.emitState();
     }
 
     spawnGem(count, type = "green") {
@@ -1033,7 +1082,46 @@ export class IncubationScene extends Scene {
             y: this.wrapValue(PhaserMath.Between(view.y - visiblePadding, view.bottom + visiblePadding), this.worldHeight)
         };
     }
+    onVisibilityChanged() {
+        const hidden = Boolean(document?.hidden) || document?.visibilityState === "hidden" || (typeof document?.hasFocus === "function" && !document.hasFocus());
+        if (hidden === this.isPageHidden) return;
 
+        this.isPageHidden = hidden;
+        if (hidden) {
+            this.visibilityPauseStartedAt = this.time?.now || 0;
+            if (this.tankHuntActive) {
+                this.pauseTankHuntForVisibility();
+                this.game.events.emit("octoglyphs:notice", "Tank Hunt paused while the tank is out of view.");
+            }
+            return;
+        }
+
+        if (this.tankHuntActive) {
+            this.resumeTankHuntFromVisibility();
+            this.game.events.emit("octoglyphs:notice", "Tank Hunt resumed.");
+        }
+        this.flushBackgroundCollectedGems();
+    }
+
+    pauseTankHuntForVisibility() {
+        this.physics.world.pause();
+        const timers = [this.tankWaveTimer, this.autoFireTimer, this.tankHuntEndTimer, this.tankSpecificWaveTimer];
+        for (const timer of timers) {
+            if (timer) timer.paused = true;
+        }
+    }
+
+    resumeTankHuntFromVisibility() {
+        this.physics.world.resume();
+        const timers = [this.tankWaveTimer, this.autoFireTimer, this.tankHuntEndTimer, this.tankSpecificWaveTimer];
+        for (const timer of timers) {
+            if (timer) timer.paused = false;
+        }
+    }
+
+    isBackgroundCollectMode() {
+        return this.isPageHidden && !this.tankHuntActive;
+    }
 
     startTankHunt() {
         if (this.tankHuntActive) {
@@ -1084,6 +1172,7 @@ export class IncubationScene extends Scene {
         this.setTankBackground(pickBackgroundForDepthIndex(this.tankBackgroundDepthIndex));
         this.game.events.emit("octoglyphs:notice", `${this.getTankArchetypeLabel()} Hunt started. Clear waves, stack mutations, then decide whether to continue.`);
         this.startNextTankWave();
+        if (this.isPageHidden) this.pauseTankHuntForVisibility();
         triggerFTUE("firstHuntStart", this.save);
     }
 
