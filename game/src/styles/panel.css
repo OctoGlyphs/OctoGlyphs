@@ -181,7 +181,18 @@ body.plugin-mode .hud {
 }
 
 #loadout-panel .trait-panel-shell {
-    grid-template-rows: auto auto auto auto auto auto minmax(0, 1fr);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-color: #77e8ff rgba(120, 225, 255, 0.08);
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+}
+
+#loadout-panel .trait-list {
+    overflow-y: visible;
+    flex-shrink: 0;
 }
 
 #evolve-panel .trait-panel-shell {
