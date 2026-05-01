@@ -22,9 +22,7 @@ entry.register({
     }
 });
 
-assert.equal(controlUiDescriptors.length, 1);
-assert.equal(controlUiDescriptors[0].id, "octoglyphs-companion");
-assert.equal(controlUiDescriptors[0].surface, "settings");
+assert.equal(controlUiDescriptors.length, 0);
 
 assert.equal(httpRoutes.length, 1);
 assert.equal(httpRoutes[0].path, "/octoglyphs");

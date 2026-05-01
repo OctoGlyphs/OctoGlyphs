@@ -22,39 +22,6 @@ export default definePluginEntry({
     name: "OctoGlyphs",
     description: "Feeds a private OctoGlyphs companion tank from safe OpenClaw activity metadata.",
     register(api) {
-        registerControlUiDescriptorIfAvailable(api as PluginApiWithOptionalControlUi, {
-            id: "octoglyphs-companion",
-            surface: "settings",
-            label: "OctoGlyphs companion",
-            description: "Shows the local companion tank URL and privacy-safe metadata settings.",
-            placement: "plugins",
-            schema: {
-                type: "object",
-                properties: {
-                    gameUrl: {
-                        type: "string",
-                        title: "Companion tank URL",
-                        default: "/octoglyphs"
-                    },
-                    enabled: {
-                        type: "boolean",
-                        title: "Emit safe activity metadata",
-                        default: true
-                    },
-                    emitModelEvents: {
-                        type: "boolean",
-                        title: "Use model timing metadata",
-                        default: true
-                    },
-                    emitToolEvents: {
-                        type: "boolean",
-                        title: "Use tool category metadata",
-                        default: true
-                    }
-                }
-            }
-        });
-
         api.registerHttpRoute({
             path: "/octoglyphs",
             auth: "gateway",
@@ -118,36 +85,10 @@ export default definePluginEntry({
     }
 });
 
-type PluginApiWithOptionalControlUi = {
-    registerControlUiDescriptor?: (descriptor: {
-        id: string;
-        surface: "session" | "tool" | "run" | "settings";
-        label: string;
-        description?: string;
-        placement?: string;
-        schema?: unknown;
-    }) => void;
-};
-
 type PluginApiWithHook = {
     registerHook?: (hookName: string, handler: (event: unknown) => Promise<void>) => void;
     on?: (hookName: string, handler: (event: unknown) => Promise<void>, opts?: { priority: number }) => void;
 };
-
-function registerControlUiDescriptorIfAvailable(api: PluginApiWithOptionalControlUi, descriptor: {
-    id: string;
-    surface: "session" | "tool" | "run" | "settings";
-    label: string;
-    description?: string;
-    placement?: string;
-    schema?: unknown;
-}): void {
-    if (typeof api.registerControlUiDescriptor !== "function") {
-        return;
-    }
-
-    api.registerControlUiDescriptor(descriptor);
-}
 
 function registerHook(api: PluginApiWithHook, hookName: string, handler: (event: HookEvent) => Promise<void>): void {
     const wrappedHandler = (event: unknown) => handler(event as HookEvent);
