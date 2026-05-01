@@ -529,6 +529,9 @@ export class IncubationScene extends Scene {
         this.backgroundCollectedGems = 0;
         this.backgroundCollectedValue = 0;
         this.backgroundCollectedByType = {};
+        this.backgroundGemLedger = [];
+        this.backgroundLedgerOcto = null;
+        this.backgroundLedgerAvailableAt = 0;
         this.isPageHidden = typeof document !== "undefined" && document.visibilityState === "hidden";
         this.visibilityPauseStartedAt = 0;
     }
@@ -1015,38 +1018,130 @@ export class IncubationScene extends Scene {
 
     awardOrSpawnGems(count, type = "green") {
         if (this.isBackgroundCollectMode()) {
-            this.collectBackgroundGems(count, type);
+            this.enqueueBackgroundGems(count, type);
             return;
         }
         this.spawnGem(count, type);
     }
 
-    collectBackgroundGems(count, type = "green") {
-        const gemDef = GEM_TYPES[type] || GEM_TYPES.green;
+    enqueueBackgroundGems(count, type = "green") {
         const safeCount = Math.max(0, Math.floor(count || 0));
         if (safeCount <= 0) return;
 
-        const valuePerGem = Math.max(1, Math.round((gemDef.value || 1) * this.stats.gemValue));
-        const totalValue = safeCount * valuePerGem;
-        addGemValue(this.save, type, totalValue);
-        this.backgroundCollectedGems += safeCount;
-        this.backgroundCollectedValue += totalValue;
-        this.backgroundCollectedByType[type] = (this.backgroundCollectedByType[type] || 0) + totalValue;
-        saveGame(this.save);
-        triggerFTUE("firstGem", this.save);
+        this.reconcileBackgroundGemLedger();
+
+        const now = this.getBackgroundLedgerNow();
+        const gemDef = GEM_TYPES[type] || GEM_TYPES.green;
+        const gemType = GEM_TYPES[type] ? type : "green";
+        const value = Math.max(1, Math.round((gemDef.value || 1) * this.stats.gemValue));
+        const speed = this.getBackgroundCollectSpeed();
+        let virtualOcto = this.backgroundLedgerOcto || { x: this.octo?.x || this.worldWidth / 2, y: this.octo?.y || this.worldHeight / 2 };
+        let availableAt = Math.max(now, this.backgroundLedgerAvailableAt || now);
+
+        for (let i = 0; i < safeCount; i += 1) {
+            const position = this.pickGemSpawnPosition();
+            const distance = this.toroidalDistance(virtualOcto.x, virtualOcto.y, position.x, position.y);
+            const travelMs = PhaserMath.Clamp(Math.round(distance / Math.max(1, speed) * 1000) + 360, 900, 11000);
+            const collectAt = availableAt + travelMs;
+            const ledgerGem = {
+                id: `${now}-${this.backgroundGemLedger.length}-${i}`,
+                type: gemType,
+                value,
+                x: this.wrapValue(position.x, this.worldWidth),
+                y: this.wrapValue(position.y, this.worldHeight),
+                spawnedAt: now,
+                collectAt
+            };
+
+            this.backgroundGemLedger.push(ledgerGem);
+            virtualOcto = { x: ledgerGem.x, y: ledgerGem.y };
+            availableAt = collectAt;
+        }
+
+        this.backgroundLedgerOcto = virtualOcto;
+        this.backgroundLedgerAvailableAt = availableAt;
+    }
+
+    reconcileBackgroundGemLedger() {
+        if (!this.backgroundGemLedger?.length) return;
+
+        const now = this.getBackgroundLedgerNow();
+        const pending = [];
+        let collected = 0;
+        let collectedValue = 0;
+        let lastCollected = null;
+
+        for (const ledgerGem of this.backgroundGemLedger) {
+            if (ledgerGem.collectAt <= now) {
+                addGemValue(this.save, ledgerGem.type, ledgerGem.value);
+                collected += 1;
+                collectedValue += ledgerGem.value;
+                this.backgroundCollectedByType[ledgerGem.type] = (this.backgroundCollectedByType[ledgerGem.type] || 0) + ledgerGem.value;
+                lastCollected = ledgerGem;
+                continue;
+            }
+            pending.push(ledgerGem);
+        }
+
+        this.backgroundGemLedger = pending;
+        if (lastCollected) {
+            this.backgroundLedgerOcto = { x: lastCollected.x, y: lastCollected.y };
+            if (this.octo?.active) {
+                this.octo.setPosition(lastCollected.x, lastCollected.y);
+                this.octo.body?.setVelocity(0, 0);
+            }
+        }
+
+        if (collected > 0) {
+            this.backgroundCollectedGems += collected;
+            this.backgroundCollectedValue += collectedValue;
+            saveGame(this.save);
+            triggerFTUE("firstGem", this.save);
+        }
+    }
+
+    materializeBackgroundGemLedger() {
+        this.reconcileBackgroundGemLedger();
+        if (!this.backgroundGemLedger?.length) return 0;
+
+        const remaining = this.backgroundGemLedger;
+        this.backgroundGemLedger = [];
+        this.backgroundLedgerOcto = null;
+        this.backgroundLedgerAvailableAt = 0;
+
+        for (const ledgerGem of remaining) {
+            this.spawnGemAt(ledgerGem.x, ledgerGem.y, ledgerGem.type, { value: ledgerGem.value });
+        }
+        this.autopilotCollectTarget = null;
+        return remaining.length;
     }
 
     flushBackgroundCollectedGems() {
-        if (!this.backgroundCollectedGems) return;
+        this.reconcileBackgroundGemLedger();
+        const materialized = this.materializeBackgroundGemLedger();
+        if (!this.backgroundCollectedGems && !materialized) return;
 
         const gemCount = this.backgroundCollectedGems;
         const gemValue = this.backgroundCollectedValue;
         this.backgroundCollectedGems = 0;
         this.backgroundCollectedValue = 0;
         this.backgroundCollectedByType = {};
-        this.showCenterTraitText(`Collected ${gemValue} gem value while away`);
-        this.game.events.emit("octoglyphs:notice", `Octo collected ${gemCount} activity gem${gemCount === 1 ? "" : "s"} while you were away.`);
+
+        if (gemCount > 0) {
+            this.showCenterTraitText(`Collected ${gemValue} gem value while away`);
+            this.game.events.emit("octoglyphs:notice", `Octo collected ${gemCount} activity gem${gemCount === 1 ? "" : "s"} while you worked.${materialized ? ` ${materialized} still in tank.` : ""}`);
+        } else if (materialized > 0) {
+            this.game.events.emit("octoglyphs:notice", `${materialized} activity gem${materialized === 1 ? "" : "s"} are still waiting in the tank.`);
+        }
         this.emitState();
+    }
+
+    getBackgroundLedgerNow() {
+        return Date.now();
+    }
+
+    getBackgroundCollectSpeed() {
+        return Math.max(72, 112 * (this.stats?.swimSpeed || 1) * (this.stats?.idleEfficiency || 1));
     }
 
     spawnGem(count, type = "green") {
@@ -3550,7 +3645,7 @@ export class IncubationScene extends Scene {
         const position = this.tankHuntActive ? { x, y } : { x: this.wrapValue(x, this.worldWidth), y: this.wrapValue(y, this.worldHeight) };
         const gem = this.gems.create(position.x, position.y, `${gemDef.key}-0`);
         gem.setData("gemType", type);
-        gem.setData("value", gemDef.value);
+        gem.setData("value", options.value || gemDef.value);
         gem.setData("frame", PhaserMath.Between(0, gemDef.frames - 1));
         gem.setScale(type === "silver" ? 0.86 : 0.96);
         gem.setDepth(19);
