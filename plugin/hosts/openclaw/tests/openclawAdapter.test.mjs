@@ -26,7 +26,7 @@ assert.equal(controlUiDescriptors.length, 0);
 
 assert.equal(httpRoutes.length, 1);
 assert.equal(httpRoutes[0].path, "/octoglyphs");
-assert.equal(httpRoutes[0].auth, "gateway");
+assert.equal(httpRoutes[0].auth, "plugin");
 assert.equal(httpRoutes[0].match, "prefix");
 
 assert.equal(commands.length, 1);

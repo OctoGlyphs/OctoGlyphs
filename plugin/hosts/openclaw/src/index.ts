@@ -25,7 +25,7 @@ export default definePluginEntry({
     register(api) {
         api.registerHttpRoute({
             path: "/octoglyphs",
-            auth: "gateway",
+            auth: "plugin",
             match: "prefix",
             replaceExisting: true,
             handler: handleOctoGlyphsRoute
