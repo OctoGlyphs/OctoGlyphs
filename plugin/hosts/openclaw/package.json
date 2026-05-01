@@ -18,7 +18,7 @@
         "FRESH_MACHINE_TEST.md"
     ],
     "scripts": {
-        "copy:game": "rm -rf public && mkdir -p public && cp -R ../../../game/dist/. public/ && rm -rf public/assets/raw/Halloween\\ assets public/assets/raw/Enemies public/assets/raw/gems public/assets/raw/Old\\ cycles public/assets/raw/UI/Play public/assets/raw/UI/Settings public/assets/raw/Backgrounds/mid*.png public/assets/raw/Backgrounds/newbg*.png",
+        "copy:game": "rm -rf public && mkdir -p public && cp -R ../../../game/dist/. public/ && rm -rf public/assets/raw/Halloween\\ assets public/assets/raw/Enemies public/assets/raw/gems public/assets/raw/Old\\ cycles public/assets/raw/UI/Play public/assets/raw/UI/Settings public/assets/raw/Backgrounds/deep2.png public/assets/raw/Backgrounds/deep3.png public/assets/raw/Backgrounds/deep4.png public/assets/raw/Backgrounds/shallow2.png public/assets/raw/Backgrounds/shallow3.png public/assets/raw/Backgrounds/shallow4.png public/assets/raw/Backgrounds/mid*.png public/assets/raw/Backgrounds/newbg*.png public/assets/raw/music/octosong*.mp3",
         "build:game": "npm --prefix ../../../game install && npm --prefix ../../../game run build -- --logLevel warn",
         "build": "npm run build:game && npm run copy:game && tsc -p tsconfig.json",
         "build:plugin": "tsc -p tsconfig.json",

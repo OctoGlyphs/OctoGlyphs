@@ -1,24 +1,9 @@
 export const BACKGROUND_TRACKS = [
     { key: "bg-shallow-1", file: "shallow1.png", depth: "shallow" },
-    { key: "bg-shallow-2", file: "shallow2.png", depth: "shallow" },
-    { key: "bg-shallow-3", file: "shallow3.png", depth: "shallow" },
-    { key: "bg-shallow-4", file: "shallow4.png", depth: "shallow" },
-    { key: "bg-deep-1", file: "deep1.png", depth: "deep" },
-    { key: "bg-deep-2", file: "deep2.png", depth: "deep" },
-    { key: "bg-deep-3", file: "deep3.png", depth: "deep" },
-    { key: "bg-deep-4", file: "deep4.png", depth: "deep" }
+    { key: "bg-deep-1", file: "deep1.png", depth: "deep" }
 ];
 
-export const MUSIC_TRACKS = [
-    { key: "octosong-1", file: "octosong1.mp3" },
-    { key: "octosong-2", file: "octosong2.mp3" },
-    { key: "octosong-3", file: "octosong3.mp3" },
-    { key: "octosong-4", file: "octosong4.mp3" },
-    { key: "octosong-5", file: "octosong5.mp3" },
-    { key: "octosong-6", file: "octosong6.mp3" },
-    { key: "octosong-7", file: "octosong7.mp3" },
-    { key: "octosong-8", file: "octosong8.mp3" }
-];
+export const MUSIC_TRACKS = [];
 
 export function backgroundUrl(file) {
     return `./assets/raw/Backgrounds/${file}`;
