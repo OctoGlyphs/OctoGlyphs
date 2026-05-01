@@ -192,6 +192,11 @@ body.plugin-mode .hud {
     -webkit-overflow-scrolling: touch;
 }
 
+#loadout-panel .trait-panel-shell > *,
+#shop-panel .trait-panel-shell > * {
+    flex: 0 0 auto;
+}
+
 #loadout-panel .trait-list,
 #shop-panel .trait-list {
     overflow-y: visible;
@@ -203,11 +208,34 @@ body.plugin-mode .hud {
 }
 
 .shop-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
     gap: 10px;
     min-height: 0;
+}
+
+.shop-header > div:first-child {
+    min-width: 0;
+}
+
+#shop-panel .shop-header {
+    grid-template-columns: 1fr;
+}
+
+#shop-panel .panel-actions {
+    justify-content: flex-start;
+}
+
+#shop-panel .shop-tabs,
+#shop-panel .sort-section,
+#shop-panel .trait-list {
+    position: relative;
+    clear: both;
+}
+
+.panel-actions {
+    flex-shrink: 0;
 }
 
 .shop-tabs {
