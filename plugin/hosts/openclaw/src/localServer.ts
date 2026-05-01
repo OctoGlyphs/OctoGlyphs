@@ -49,6 +49,7 @@ export function ensureOctoGlyphsLocalServer(config: OctoglyphsLocalServerConfig 
     });
 
     nextServer.listen(port, "127.0.0.1");
+    nextServer.unref();
     server = nextServer;
     activePort = port;
 

@@ -69,9 +69,7 @@ function openEventStream(req: IncomingMessage, res: ServerResponse): void {
 }
 
 function serveStaticFile(requestPath: string, res: ServerResponse): boolean {
-    const relativePath = requestPath === "/octoglyphs" || requestPath === "/octoglyphs/"
-        ? "index.html"
-        : decodeURIComponent(requestPath.replace(/^\/octoglyphs\/?/, ""));
+    const relativePath = getStaticRelativePath(requestPath);
     const filePath = resolve(join(STATIC_ROOT, normalize(relativePath)));
 
     if (!isInsideStaticRoot(filePath) || !existsSync(filePath) || !statSync(filePath).isFile()) {
@@ -90,6 +88,22 @@ function serveStaticFile(requestPath: string, res: ServerResponse): boolean {
 function isInsideStaticRoot(filePath: string): boolean {
     const relation = relative(STATIC_ROOT, filePath);
     return relation === "" || (!relation.startsWith("..") && !relation.startsWith("/"));
+}
+
+function getStaticRelativePath(requestPath: string): string {
+    if (requestPath === "/octoglyphs" || requestPath === "/octoglyphs/") {
+        return "index.html";
+    }
+
+    if (requestPath.startsWith("/octoglyphs/")) {
+        return decodeURIComponent(requestPath.slice("/octoglyphs/".length));
+    }
+
+    if (requestPath.startsWith("/assets/")) {
+        return decodeURIComponent(requestPath.slice(1));
+    }
+
+    return decodeURIComponent(requestPath.replace(/^\//, ""));
 }
 
 function getRequestPath(req: IncomingMessage): string {

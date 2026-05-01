@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readdirSync } from "node:fs";
 import { Writable } from "node:stream";
 import entry from "../dist/index.js";
 
@@ -52,6 +53,21 @@ assert.equal(commandResult.text.includes("Open the tank: http://localhost:18999/
 assert.equal(commandResult.text.includes("Live event stream: http://localhost:18999/octoglyphs/stream"), true);
 assert.equal(commandResult.text.includes("Gateway route: /octoglyphs"), true);
 assert.equal(commandResult.text.includes("prompts, responses, code"), true);
+
+const assetFileName = readdirSync(new URL("../public/assets", import.meta.url)).find((fileName) => fileName.endsWith(".js"));
+assert.notEqual(assetFileName, undefined);
+
+const assetResponse = createTestResponse();
+const assetHandled = await httpRoutes[0].handler({ url: `/assets/${assetFileName}`, method: "GET", on() {} }, assetResponse);
+assert.equal(assetHandled, true);
+assert.equal(assetResponse.statusCode, 200);
+assert.equal(assetResponse.headers["content-type"], "text/javascript; charset=utf-8");
+
+const prefixedAssetResponse = createTestResponse();
+const prefixedAssetHandled = await httpRoutes[0].handler({ url: `/octoglyphs/assets/${assetFileName}`, method: "GET", on() {} }, prefixedAssetResponse);
+assert.equal(prefixedAssetHandled, true);
+assert.equal(prefixedAssetResponse.statusCode, 200);
+assert.equal(prefixedAssetResponse.headers["content-type"], "text/javascript; charset=utf-8");
 
 const healthResponse = createTestResponse();
 const healthHandled = await httpRoutes[0].handler({ url: "/octoglyphs/health", method: "GET", on() {} }, healthResponse);
