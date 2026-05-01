@@ -1,0 +1,19 @@
+{
+  "name": "octoglyphs",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "test:privacy": "node tests/privacyGuards.test.js",
+    "test:companion": "node tests/companionReceiver.test.js",
+    "test": "npm run test:privacy && npm run test:companion",
+    "preview": "vite preview --host 0.0.0.0"
+  },
+  "dependencies": {
+    "vite": "latest",
+    "phaser": "latest"
+  },
+  "devDependencies": {}
+}

@@ -1,0 +1,40 @@
+{
+    "id": "octoglyphs",
+    "name": "OctoGlyphs",
+    "description": "A private AI-work Tamagotchi sidecar that feeds from safe OpenClaw activity metadata without reading prompts, responses, code, files, diffs, or terminal output.",
+    "version": "0.1.0",
+    "activation": {
+        "onStartup": true
+    },
+    "configSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+            "enabled": {
+                "type": "boolean",
+                "default": true,
+                "description": "Emit safe activity metadata to OctoGlyphs."
+            },
+            "gameUrl": {
+                "type": "string",
+                "default": "/octoglyphs",
+                "description": "Gateway-hosted OctoGlyphs companion URL. Advanced users may override for local development."
+            },
+            "emitModelEvents": {
+                "type": "boolean",
+                "default": true,
+                "description": "Use sanitized model-call timing and token metadata when available."
+            },
+            "emitToolEvents": {
+                "type": "boolean",
+                "default": true,
+                "description": "Use sanitized tool category, duration, and success metadata."
+            },
+            "debugSanitizedEvents": {
+                "type": "boolean",
+                "default": false,
+                "description": "Log sanitized event shapes only. Never logs prompt, response, code, diff, file body, stdout, or stderr content."
+            }
+        }
+    }
+}
