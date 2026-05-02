@@ -1,0 +1,70 @@
+{
+    "description": "Emit privacy-safe Claude Code activity metadata to the local OctoGlyphs companion tank.",
+    "hooks": {
+        "SessionStart": [
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "node \"$CLAUDE_PLUGIN_ROOT/scripts/octoglyphs-hook.mjs\"",
+                        "timeout": 2,
+                        "async": true,
+                        "statusMessage": "Starting OctoGlyphs"
+                    }
+                ]
+            }
+        ],
+        "UserPromptSubmit": [
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "node \"$CLAUDE_PLUGIN_ROOT/scripts/octoglyphs-hook.mjs\"",
+                        "timeout": 2,
+                        "async": true,
+                        "statusMessage": "Feeding OctoGlyphs"
+                    }
+                ]
+            }
+        ],
+        "PostToolUse": [
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "node \"$CLAUDE_PLUGIN_ROOT/scripts/octoglyphs-hook.mjs\"",
+                        "timeout": 2,
+                        "async": true,
+                        "statusMessage": "Feeding OctoGlyphs"
+                    }
+                ]
+            }
+        ],
+        "PostToolUseFailure": [
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "node \"$CLAUDE_PLUGIN_ROOT/scripts/octoglyphs-hook.mjs\"",
+                        "timeout": 2,
+                        "async": true,
+                        "statusMessage": "Feeding OctoGlyphs"
+                    }
+                ]
+            }
+        ],
+        "Stop": [
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "node \"$CLAUDE_PLUGIN_ROOT/scripts/octoglyphs-hook.mjs\"",
+                        "timeout": 2,
+                        "async": true,
+                        "statusMessage": "Feeding OctoGlyphs"
+                    }
+                ]
+            }
+        ]
+    }
+}

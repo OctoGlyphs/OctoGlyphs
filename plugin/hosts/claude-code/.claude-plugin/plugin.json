@@ -1,0 +1,19 @@
+{
+    "name": "octoglyphs",
+    "version": "0.1.0",
+    "description": "Prompt Fed Octo Companion for Claude Code. Feeds from sanitized activity metadata without reading prompts, responses, code, files, diffs, or terminal output.",
+    "author": {
+        "name": "OctoGlyphs",
+        "url": "https://github.com/OctoGlyphs/OctoGlyphs"
+    },
+    "homepage": "https://github.com/OctoGlyphs/OctoGlyphs",
+    "repository": "https://github.com/OctoGlyphs/OctoGlyphs",
+    "license": "MIT",
+    "keywords": [
+        "octoglyphs",
+        "companion",
+        "hooks",
+        "privacy"
+    ],
+    "hooks": "./hooks/hooks.json"
+}
