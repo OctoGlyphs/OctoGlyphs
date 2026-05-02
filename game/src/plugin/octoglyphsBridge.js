@@ -31,20 +31,26 @@ export function createOctoGlyphsBridge({ onEvent, privacy }) {
         return stream;
     }
 
+    const allowBrowserDebug = Boolean(import.meta.env?.DEV);
+
     return {
         start() {
-            window.octoglyphs = window.octoglyphs || {};
-            window.octoglyphs.emit = emit;
-            window.octoglyphs.protocol = "octoglyphs.events.v1";
-            window.addEventListener("message", handleWindowMessage);
+            if (allowBrowserDebug) {
+                window.octoglyphs = window.octoglyphs || {};
+                window.octoglyphs.emit = emit;
+                window.octoglyphs.protocol = "octoglyphs.events.v1";
+                window.addEventListener("message", handleWindowMessage);
+            }
             this.companionStream = connectCompanionStream();
         },
 
         stop() {
             clearInterval(chunkTimer);
             this.companionStream?.close?.();
-            window.removeEventListener("message", handleWindowMessage);
-            if (window.octoglyphs?.emit === emit) delete window.octoglyphs.emit;
+            if (allowBrowserDebug) {
+                window.removeEventListener("message", handleWindowMessage);
+                if (window.octoglyphs?.emit === emit) delete window.octoglyphs.emit;
+            }
         },
 
         simulatePrompt() {
