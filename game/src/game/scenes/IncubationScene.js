@@ -4250,11 +4250,16 @@ export class IncubationScene extends Scene {
                 continue;
             }
 
-            const collectDistance = item.getData("isTrait") ? 48 : 34;
+            const collectDistance = item.getData("isTrait") ? 60 : 46;
             if (distance <= collectDistance) {
-                item.setData("collecting", true);
-                item.body.setVelocity(0, 0);
-                item.setPosition(this.octo.x, this.octo.y);
+                if (item.getData("isTrait")) {
+                    item.setData("collecting", true);
+                    item.body.setVelocity(0, 0);
+                    item.setPosition(this.octo.x, this.octo.y);
+                    continue;
+                }
+
+                this.collectGem(item);
                 continue;
             }
 

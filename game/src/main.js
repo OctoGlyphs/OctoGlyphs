@@ -57,14 +57,6 @@ if (isPluginMode) {
 }
 
 
-document.getElementById("fake-prompt-button")?.addEventListener("click", () => {
-    bridge.simulatePrompt();
-});
-
-document.getElementById("spawn-trait-button")?.addEventListener("click", () => {
-    game.events.emit("octoglyphs:spawn-trait");
-});
-
 document.getElementById("tank-hunt-button")?.addEventListener("click", () => {
     game.events.emit("octoglyphs:start-tank-hunt");
 });
