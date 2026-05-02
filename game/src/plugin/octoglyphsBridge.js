@@ -1,10 +1,15 @@
-export function createOctoGlyphsBridge({ onEvent, privacy }) {
+export function createOctoGlyphsBridge({ onEvent, onStatus, privacy }) {
     let chunkTimer = null;
     let promptStartedAt = 0;
+
+    function reportStatus(status) {
+        onStatus?.(status);
+    }
 
     function emit(rawEvent) {
         const event = privacy?.sanitizeEvent ? privacy.sanitizeEvent(rawEvent) : rawEvent;
         if (!event) return false;
+        reportStatus({ state: "event", eventType: event.type, timestamp: Date.now() });
         onEvent?.(event);
         return true;
     }
@@ -16,16 +21,26 @@ export function createOctoGlyphsBridge({ onEvent, privacy }) {
     }
 
     function connectCompanionStream() {
-        if (typeof EventSource !== "function") return null;
+        if (typeof EventSource !== "function") {
+            reportStatus({ state: "unsupported", timestamp: Date.now() });
+            return null;
+        }
 
         const stream = new EventSource("/octoglyphs/stream");
+        reportStatus({ state: "connecting", timestamp: Date.now() });
+        stream.addEventListener("open", () => {
+            reportStatus({ state: "connected", timestamp: Date.now() });
+        });
+        stream.addEventListener("error", () => {
+            reportStatus({ state: "error", timestamp: Date.now() });
+        });
         stream.addEventListener("octoglyphs", (streamEvent) => {
             try {
                 const payload = JSON.parse(streamEvent.data);
                 if (!payload || payload.protocol !== "octoglyphs.events.v1") return;
                 emit(payload.event);
             } catch {
-                // Ignore malformed companion messages. Privacy guard still runs before gameplay.
+                reportStatus({ state: "malformed", timestamp: Date.now() });
             }
         });
         return stream;

@@ -37,6 +37,18 @@ const body = await health.json();
 assert.equal(body.host, "claude-code");
 assert.equal(body.protocol, "octoglyphs.events.v1");
 
+const streamEvent = await readOneStreamEvent(port);
+await runHook({
+    hook_event_name: "PostToolUse",
+    tool_name: "Bash",
+    tool_use_id: "tool-test",
+    error: null
+}, port);
+const event = await streamEvent;
+assert.equal(event.protocol, "octoglyphs.events.v1");
+assert.equal(event.event.type, "tool.used");
+assert.equal(event.event.tool_kind, "shell");
+
 console.log("Claude Code plugin tests passed");
 
 async function runHook(payload, port) {
@@ -56,4 +68,28 @@ async function runHook(payload, port) {
     });
 
     assert.equal(exitCode, 0);
+}
+
+async function readOneStreamEvent(port) {
+    const response = await fetch(`http://127.0.0.1:${port}/octoglyphs/stream`);
+    assert.equal(response.ok, true);
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    const deadline = Date.now() + 2000;
+
+    while (Date.now() < deadline) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const match = buffer.match(/data: (.+)\n\n/);
+        if (match) {
+            await reader.cancel();
+            return JSON.parse(match[1]);
+        }
+    }
+
+    await reader.cancel();
+    throw new Error("No OctoGlyphs stream event received");
 }

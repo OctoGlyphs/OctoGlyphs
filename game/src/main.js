@@ -40,6 +40,34 @@ const game = new Phaser.Game({
 const privacy = createPrivacyGuards();
 const bridge = createOctoGlyphsBridge({
     privacy,
+    onStatus(status) {
+        const readout = document.getElementById("plugin-status-readout");
+        if (!readout || !status?.state) return;
+
+        if (status.state === "connecting") {
+            readout.textContent = "Connecting to OctoGlyphs stream...";
+            return;
+        }
+
+        if (status.state === "connected") {
+            readout.textContent = "OctoGlyphs stream connected";
+            return;
+        }
+
+        if (status.state === "event") {
+            readout.textContent = `Last OctoGlyphs event: ${status.eventType}`;
+            return;
+        }
+
+        if (status.state === "error") {
+            readout.textContent = "OctoGlyphs stream disconnected or unavailable";
+            return;
+        }
+
+        if (status.state === "unsupported") {
+            readout.textContent = "OctoGlyphs stream unsupported in this browser";
+        }
+    },
     onEvent(event) {
         game.events.emit("octoglyphs:event", event);
     }
@@ -77,14 +105,20 @@ function updateMusicButton() {
 
 function playNextMusicTrack() {
     if (musicMuted || shuffledMusicTracks.length === 0) return;
-    const track = shuffledMusicTracks[currentTrackIndex % shuffledMusicTracks.length];
-    currentTrackIndex += 1;
-    currentMusic = game.sound.add(track.key, { volume: 0.42 });
-    currentMusic.once("complete", () => {
-        currentMusic = null;
-        playNextMusicTrack();
-    });
-    currentMusic.play();
+
+    for (let attempt = 0; attempt < shuffledMusicTracks.length; attempt += 1) {
+        const track = shuffledMusicTracks[currentTrackIndex % shuffledMusicTracks.length];
+        currentTrackIndex += 1;
+        if (!game.cache.audio.exists(track.key)) continue;
+
+        currentMusic = game.sound.add(track.key, { volume: 0.42 });
+        currentMusic.once("complete", () => {
+            currentMusic = null;
+            playNextMusicTrack();
+        });
+        currentMusic.play();
+        return;
+    }
 }
 
 function stopMusic() {

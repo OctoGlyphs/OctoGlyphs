@@ -19,6 +19,10 @@ if (event) {
     await postEvent(event, port);
 }
 
+if (input?.hook_event_name === "SessionStart") {
+    writeSessionStartMessage(port);
+}
+
 function createOctoglyphsEvent(source) {
     const eventName = String(source?.hook_event_name ?? "");
 
@@ -244,6 +248,17 @@ function compactEvent(event) {
         }
     }
     return output;
+}
+
+function writeSessionStartMessage(port) {
+    const url = `http://localhost:${port}/octoglyphs`;
+    const message = [
+        "Your OctoGlyph is blindly feeding on this Claude Code session.",
+        `Open your tank: ${url}`,
+        "Privacy: prompts, responses, files, diffs, and terminal output are not sent."
+    ].join("\n");
+
+    process.stdout.write(`${JSON.stringify({ systemMessage: message })}\n`);
 }
 
 function estimateTokenCount(charCount) {
