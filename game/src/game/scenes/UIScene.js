@@ -85,6 +85,14 @@ export class UIScene extends Scene {
         this.renderInventory();
         this.renderLoadout();
         this.renderEvolution();
+        this.renderState({
+            wallet: this.save.wallet,
+            totalGems: walletTotal(this.save),
+            loadout: equippedAssets(this.save),
+            lifetime: this.save.lifetime,
+            stats: equippedStats(this.save),
+            tankRun: null
+        });
 
         this.game.events.on("octoglyphs:state", state => this.renderState(state));
         this.game.events.on("octoglyphs:notice", message => this.setNotice(message));

@@ -4356,14 +4356,13 @@ export class IncubationScene extends Scene {
 
         this.updateAutopilotStuckState();
 
-        if (!this.tankHuntActive) {
-            const nearest = this.pickAutopilotGemTarget();
-            if (nearest) {
-                const distance = this.toroidalDistance(this.octo.x, this.octo.y, nearest.x, nearest.y);
-                const speed = this.getAutopilotSpeed(112 * this.stats.swimSpeed * this.stats.idleEfficiency, distance, 28);
-                this.moveBodyTowardToroidal(this.octo, nearest, speed);
-                return;
-            }
+        const nearest = this.pickAutopilotGemTarget();
+        if (nearest) {
+            const distance = this.toroidalDistance(this.octo.x, this.octo.y, nearest.x, nearest.y);
+            const baseSpeed = this.tankHuntActive ? 126 * this.tankRunStats.swimSpeed : 112;
+            const speed = this.getAutopilotSpeed(baseSpeed * this.stats.swimSpeed * this.stats.idleEfficiency, distance, this.tankHuntActive ? 52 : 28);
+            this.moveBodyTowardToroidal(this.octo, nearest, speed);
+            return;
         }
 
         if (this.needsNewWanderTarget()) this.pickNewWanderTarget();
