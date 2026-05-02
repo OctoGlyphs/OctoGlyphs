@@ -38,13 +38,21 @@ cd plugin/hosts/claude-code
 npm test
 ```
 
-To try it in Claude Code, load this folder as a local plugin directory using Claude Code's plugin development flow, then open:
+To try it in Claude Code, load this folder as a local plugin directory using Claude Code's plugin development flow, then open the companion URL.
+
+Default URL:
 
 ```text
 http://localhost:18791/octoglyphs
 ```
 
-The local health endpoint is:
+If that port is already occupied, the plugin automatically falls back to the next available local port. The actual URL is written to:
+
+```text
+~/.octoglyphs-claude-code.json
+```
+
+The local health endpoint uses the same port, for example:
 
 ```text
 http://localhost:18791/octoglyphs/health
@@ -52,6 +60,6 @@ http://localhost:18791/octoglyphs/health
 
 ## Development notes
 
-The hook script starts a local sidecar server on port `18791` when needed. Hook failures are swallowed so OctoGlyphs never blocks Claude Code work.
+The hook script starts a local sidecar server on port `18791` when available, then falls back through nearby local ports if needed. Hook failures are swallowed so OctoGlyphs never blocks Claude Code work.
 
 The game assets are copied into `public/` from the shared OctoGlyphs browser build.

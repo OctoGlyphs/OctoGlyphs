@@ -5,6 +5,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const DEFAULT_PORT = 18791;
+const FALLBACK_PORTS = [18791, 18792, 18793, 18794, 18795];
 const PLUGIN_ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const SIDECAR_PATH = resolve(PLUGIN_ROOT, "scripts/octoglyphs-sidecar.mjs");
 const STATE_PATH = resolve(process.env.HOME ?? ".", ".octoglyphs-claude-code.json");
@@ -13,9 +14,9 @@ const TOOL_STARTS = new Map();
 const input = await readStdinJson();
 const event = createOctoglyphsEvent(input);
 
-await ensureSidecar();
+const port = await ensureSidecar();
 if (event) {
-    await postEvent(event);
+    await postEvent(event, port);
 }
 
 function createOctoglyphsEvent(source) {
@@ -80,12 +81,26 @@ function createOctoglyphsEvent(source) {
 }
 
 async function ensureSidecar() {
-    const port = readPort();
+    const candidates = readPortCandidates();
 
-    if (await isSidecarHealthy(port)) {
-        return;
+    for (const candidate of candidates) {
+        if (await isSidecarHealthy(candidate)) {
+            await writeState({ port: candidate, url: `http://localhost:${candidate}/octoglyphs`, updated_at: Date.now() });
+            return candidate;
+        }
     }
 
+    for (const candidate of candidates) {
+        if (await isPortAvailable(candidate)) {
+            await startSidecar(candidate);
+            return candidate;
+        }
+    }
+
+    return candidates[0] ?? DEFAULT_PORT;
+}
+
+async function startSidecar(port) {
     const child = spawn(process.execPath, [SIDECAR_PATH], {
         cwd: PLUGIN_ROOT,
         detached: true,
@@ -110,14 +125,26 @@ async function ensureSidecar() {
 async function isSidecarHealthy(port) {
     try {
         const response = await fetch(`http://127.0.0.1:${port}/octoglyphs/health`);
-        return response.ok;
+        if (!response.ok) {
+            return false;
+        }
+        const body = await response.json();
+        return body?.host === "claude-code" && body?.protocol === "octoglyphs.events.v1";
     } catch {
         return false;
     }
 }
 
-async function postEvent(event) {
-    const port = readPort();
+async function isPortAvailable(port) {
+    try {
+        const response = await fetch(`http://127.0.0.1:${port}/octoglyphs/health`);
+        return response.status >= 400 && response.status !== 401 && response.status !== 403;
+    } catch {
+        return true;
+    }
+}
+
+async function postEvent(event, port) {
     try {
         await fetch(`http://127.0.0.1:${port}/octoglyphs/events`, {
             method: "POST",
@@ -255,12 +282,12 @@ async function writeState(state) {
     }
 }
 
-function readPort() {
-    const parsed = Number.parseInt(process.env.OCTOGLYPHS_CLAUDE_PORT ?? "", 10);
-    if (Number.isInteger(parsed) && parsed > 0 && parsed < 65536) {
-        return parsed;
+function readPortCandidates() {
+    const explicit = Number.parseInt(process.env.OCTOGLYPHS_CLAUDE_PORT ?? "", 10);
+    if (Number.isInteger(explicit) && explicit > 0 && explicit < 65536) {
+        return [explicit];
     }
-    return DEFAULT_PORT;
+    return FALLBACK_PORTS;
 }
 
 function sleep(ms) {
