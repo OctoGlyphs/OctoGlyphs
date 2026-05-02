@@ -62,6 +62,7 @@ document.getElementById("tank-hunt-button")?.addEventListener("click", () => {
 });
 
 let currentMusic = null;
+const shuffledMusicTracks = [...MUSIC_TRACKS].sort(() => Math.random() - 0.5);
 let currentTrackIndex = 0;
 let musicMuted = localStorage.getItem("octoglyphs.musicMuted") === "true";
 const musicButton = document.getElementById("music-toggle");
@@ -75,8 +76,8 @@ function updateMusicButton() {
 }
 
 function playNextMusicTrack() {
-    if (musicMuted || MUSIC_TRACKS.length === 0) return;
-    const track = MUSIC_TRACKS[currentTrackIndex % MUSIC_TRACKS.length];
+    if (musicMuted || shuffledMusicTracks.length === 0) return;
+    const track = shuffledMusicTracks[currentTrackIndex % shuffledMusicTracks.length];
     currentTrackIndex += 1;
     currentMusic = game.sound.add(track.key, { volume: 0.42 });
     currentMusic.once("complete", () => {

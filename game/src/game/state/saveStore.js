@@ -22,7 +22,8 @@ function defaultSave() {
             chunks: 0,
             tokens: 0,
             manualTraitsCollected: 0,
-            tankHuntCharges: 5
+            tankHuntCharges: 5,
+            commits: 0
         },
         ftue: {
             welcome: false,

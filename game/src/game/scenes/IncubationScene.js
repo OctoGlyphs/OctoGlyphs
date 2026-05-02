@@ -1000,7 +1000,10 @@ export class IncubationScene extends Scene {
         const changed = Number(event.files_changed_count || 0);
         const count = PhaserMath.Clamp(3 + changed, 4, 14);
         this.awardOrSpawnGems(count, "pink");
+        this.save.lifetime.commits = Number(this.save.lifetime.commits || 0) + 1;
+        if (this.save.lifetime.commits % 5 === 0) this.spawnTraitDiscovery(true);
         this.emitState();
+        saveGame(this.save);
     }
 
     pickGemType(promptTokens, completionTokens) {
