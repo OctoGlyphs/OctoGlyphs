@@ -6,12 +6,19 @@ This file is the chronological handoff record for OctoGlyphs. Read this first wh
 
 OctoGlyphs Phase 1 is implemented through all core systems plus the Isaac-style composable bullet flag system, named synergy set bonuses, starting-power rebalance, loadout/shop sorting quality-of-life, media support, readable shallow/deep hunt backgrounds, hardened endless-wave transitions, expanded enemy variety, boss patterns, difficulty events, explicit XP breakpoints, smarter upgrade draft logic, Step 9 boss reward choices, Step 10 real-data hunt recap, Step 11 enemy behavior variety, the sprite-shaped pickup glow pass, Step 12 mutation feel pass one, octo boss projectile patterns, the first Claude Code plugin flow, native Hermes support, and shared OctoGlyphs branding. Every single trait in the catalog (30 bodies, 30 eyes, 92 hats, 14 clothes, 24 boosts, 10 legendaries, 4 halloween) now has unique `huntMods` that flip composable bullet flags. No item is "just +Luck 0.03x" anymore — every item changes how the hunt plays.
 
-### Latest: Add OctoGlyphs Logo Branding
+### Latest: Fix Routed Logo Favicon Packaging
 - **Commit**: This commit.
+- **Changed**: Switched the web favicon and Apple touch icon paths from root-relative `/octo-logo.jpg` to route-relative `./octo-logo.jpg`, and added `public/octo-logo.jpg` to the OpenClaw plugin package `files` list so npm/OpenClaw installs include the logo asset.
+- **Why**: Ed's Mac OpenClaw test showed the browser requested `http://localhost:18790/octo-logo.jpg` and got a 404 because OctoGlyphs is served under `/octoglyphs`. The favicon must resolve beside the mounted plugin page, and the package manifest must include the logo for public npm/ClawHub installs.
+- **Verification**: `npm run build` passed from `game/`; the rebuilt `game/dist/index.html` and all three host public bundles reference `./octo-logo.jpg`; `game/dist/octo-logo.jpg`, OpenClaw, Claude Code, and Hermes public logo assets all exist; `npm run typecheck`, `npm test`, and `npm run pack:local` passed from `plugin/hosts/openclaw`; the generated tarball includes `package/public/octo-logo.jpg`. Only the expected Vite large chunk warning appeared.
+- **What's next**: Ed pulls on the Mac, repacks/reinstalls the OpenClaw plugin, restarts the gateway, opens a fresh `/octoglyphs` tab, and confirms `http://localhost:18790/octoglyphs/octo-logo.jpg` loads while the tab favicon shows the logo.
+
+### Previous: Add OctoGlyphs Logo Branding
+- **Commit**: `a7b48d3` in the public `OctoGlyphs/OctoGlyphs` release repo (`Add OctoGlyphs logo branding`).
 - **Changed**: Added Ed's `octo-logo.jpg` as repo-owned web branding, switched the game favicon and Apple touch icon from the inline octopus emoji SVG to the JPEG logo, placed the logo at the top of the GitHub README, and updated the README tagline to name OpenClaw, Claude Code, and Hermes. Rebuilt the game bundle and synced the branded public output into the tracked Claude Code and Hermes plugin public folders.
 - **Why**: OctoGlyphs now has three working host plugins and needs recognizable launch branding in browser tabs, installed plugin tanks, and the public GitHub landing page.
 - **Verification**: `npm run build` passed from `game/`; `game/dist/octo-logo.jpg`, `plugin/hosts/claude-code/public/octo-logo.jpg`, and `plugin/hosts/hermes/public/octo-logo.jpg` all exist; both tracked plugin `index.html` files reference `octo-logo.jpg`. Only the expected Vite large chunk warning appeared.
-- **What's next**: Pull from `OctoGlyphs/OctoGlyphs` on test machines, hard-refresh each host tank, and confirm the favicon/logo appears in OpenClaw packaging, Claude Code, and Hermes.
+- **What's next**: Superseded by the routed favicon/package fix above; next live checks should confirm branding appears in OpenClaw packaging, Claude Code, and Hermes.
 
 ### Previous: Fix Hermes Visible-Unfocused Tank Rendering
 - **Commit**: `1905adc` in the public `OctoGlyphs/OctoGlyphs` release repo (`Fix Hermes visible tank rendering`).

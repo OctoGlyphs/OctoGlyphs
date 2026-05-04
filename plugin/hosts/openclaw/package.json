@@ -11,6 +11,7 @@
     "files": [
         "dist/",
         "public/index.html",
+        "public/octo-logo.jpg",
         "public/assets/",
         "openclaw.plugin.json",
         "README.md",
