@@ -28,6 +28,8 @@ For installed packages, `package.json` should declare source and runtime entry p
 
 OpenClaw docs explicitly describe `model_call_started` and `model_call_ended` as sanitized provider/model call metadata without prompt or response content. They include stable metadata such as run id, call id, provider, model, duration, outcome, and bounded request id hashes.
 
+`agent_end` is registered as a content-blind fallback for OpenClaw runtimes where the sanitized model-call hooks do not fire for a plain chat turn. The docs say it observes final messages, success state, and run duration, so OctoGlyphs must never read messages from this hook. It only uses run correlation, duration, and outcome fields, then emits generic activity if no model-call event was already seen for that run.
+
 `after_tool_call` observes tool results, errors, and duration. OctoGlyphs must not forward params or results. It should map only `toolName`, duration, success/failure, and broad category.
 
 ## Hooks to avoid
@@ -42,6 +44,7 @@ The scaffold emits host-neutral OctoGlyphs protocol events:
 
 - `model_call_started` becomes `prompt.sent` and `response.started`.
 - `model_call_ended` becomes `response.completed`.
+- `agent_end` becomes generic `prompt.sent` and `response.completed` only when no sanitized model-call telemetry has already been seen for the run.
 - `after_tool_call` becomes `tool.used`.
 
 All mapping happens through `src/privacy.ts`. The adapter intentionally reduces model/provider names and tool names to coarse categories, and never reads prompt/message/input text to estimate rewards.
@@ -50,7 +53,7 @@ All mapping happens through `src/privacy.ts`. The adapter intentionally reduces 
 
 The scaffold now type-checks against the installed `openclaw` npm package (`2026.4.27`). One docs/API mismatch was found: docs mention hook `timeoutMs`, but the published `OpenClawPluginApi.on(...)` type currently only accepts `{ priority?: number }`. The adapter now uses `{ priority: 0 }` and keeps its own fetch abort timeout inside `emitToCompanion(...)`.
 
-A local adapter contract test imports the built plugin entry, captures registered hooks, invokes `model_call_started`, `model_call_ended`, and `after_tool_call`, and asserts the emitted envelopes are protocol-wrapped and content-free. The test injects prompt/message/input strings into the model start event and asserts none reach the stream.
+A local adapter contract test imports the built plugin entry, captures registered hooks, invokes `model_call_started`, `model_call_ended`, `agent_end`, and `after_tool_call`, and asserts the emitted envelopes are protocol-wrapped and content-free. The test injects prompt/message/input strings into the model start event and final-message strings into the `agent_end` event, then asserts none reach the stream. It also verifies `agent_end` is deduped when model-call telemetry already covered the same run.
 
 ## Side-panel direction
 

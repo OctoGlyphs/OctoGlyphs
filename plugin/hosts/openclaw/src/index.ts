@@ -3,12 +3,15 @@ import { broadcastOctoGlyphsEvent, getOctoGlyphsStreamClientCount } from "./even
 import { handleOctoGlyphsRoute } from "./httpRoutes.js";
 import { ensureOctoGlyphsLocalServer } from "./localServer.js";
 import {
+    createAgentEndModelEndedEvent,
+    createAgentEndPromptSentEvent,
     createModelEndedEvent,
     createModelStartedEvent,
     createPromptSentEvent,
     createToolUsedEvent,
     getCompanionGameUrl,
     getPublicCompanionGameUrl,
+    getRunId,
     shouldEmitModelEvents,
     shouldEmitToolEvents
 } from "./privacy.js";
@@ -19,6 +22,9 @@ type HookEvent = {
     };
     [key: string]: unknown;
 };
+
+const runsWithModelActivity = new Set<string>();
+const MAX_TRACKED_RUNS = 500;
 
 export default definePluginEntry({
     id: "octoglyphs",
@@ -70,6 +76,7 @@ export default definePluginEntry({
                 return;
             }
 
+            rememberRunWithModelActivity(event);
             emitOctoGlyphsEvent(config, createPromptSentEvent(event));
             emitOctoGlyphsEvent(config, createModelStartedEvent(event));
         });
@@ -81,7 +88,19 @@ export default definePluginEntry({
                 return;
             }
 
+            rememberRunWithModelActivity(event);
             emitOctoGlyphsEvent(config, createModelEndedEvent(event));
+        });
+
+        registerHook(api as PluginApiWithHook, "agent_end", async (event: HookEvent) => {
+            const config = event.context?.pluginConfig;
+
+            if (!shouldEmitModelEvents(config) || hasModelActivityForRun(event)) {
+                return;
+            }
+
+            emitOctoGlyphsEvent(config, createAgentEndPromptSentEvent(event));
+            emitOctoGlyphsEvent(config, createAgentEndModelEndedEvent(event));
         });
 
         registerHook(api as PluginApiWithHook, "after_tool_call", async (event: HookEvent) => {
@@ -112,6 +131,30 @@ function registerHook(api: PluginApiWithHook, hookName: string, handler: (event:
     if (typeof api.registerHook === "function") {
         api.registerHook(hookName, wrappedHandler);
     }
+}
+
+function rememberRunWithModelActivity(event: HookEvent): void {
+    const runId = getRunId(event);
+
+    if (!runId) {
+        return;
+    }
+
+    runsWithModelActivity.add(runId);
+
+    if (runsWithModelActivity.size > MAX_TRACKED_RUNS) {
+        const oldestRunId = runsWithModelActivity.values().next().value;
+
+        if (oldestRunId) {
+            runsWithModelActivity.delete(oldestRunId);
+        }
+    }
+}
+
+function hasModelActivityForRun(event: HookEvent): boolean {
+    const runId = getRunId(event);
+
+    return runId ? runsWithModelActivity.has(runId) : false;
 }
 
 function emitOctoGlyphsEvent(config: Record<string, unknown> | undefined, event: Record<string, unknown>): void {

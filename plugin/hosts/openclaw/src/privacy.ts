@@ -48,21 +48,31 @@ export function createModelStartedEvent(event: UnknownRecord): OctoglyphsEvent {
 }
 
 export function createModelEndedEvent(event: UnknownRecord): OctoglyphsEvent {
+    return createResponseCompletedEvent(event);
+}
+
+export function createAgentEndPromptSentEvent(_event: UnknownRecord): OctoglyphsEvent {
     return compactEvent({
-        type: "response.completed",
+        type: "prompt.sent",
         timestamp: Date.now(),
-        duration_ms: safeNonNegativeNumber(event.durationMs ?? event.duration_ms),
-        completion_tokens: safeNonNegativeNumber(readNestedNumber(event, ["usage", "completion_tokens"]) ?? readNestedNumber(event, ["usage", "outputTokens"]) ?? readNestedNumber(event, ["usage", "completionTokens"])),
-        total_tokens: safeNonNegativeNumber(readNestedNumber(event, ["usage", "total_tokens"]) ?? readNestedNumber(event, ["usage", "totalTokens"])),
-        success: normalizeOutcome(event.outcome) !== "failure"
+        source: "agent_end"
+    });
+}
+
+export function createAgentEndModelEndedEvent(event: UnknownRecord): OctoglyphsEvent {
+    return compactEvent({
+        ...createResponseCompletedEvent(event),
+        source: "agent_end"
     });
 }
 
 export function createToolUsedEvent(event: UnknownRecord): OctoglyphsEvent {
+    const toolName = event.toolName ?? event.name;
+
     return compactEvent({
         type: "tool.used",
         timestamp: Date.now(),
-        tool_kind: categorizeToolName(String(event.toolName ?? event.name ?? "unknown")),
+        tool_kind: typeof toolName === "string" ? categorizeToolName(toolName) : "other",
         duration_ms: safeNonNegativeNumber(event.durationMs ?? event.duration_ms),
         success: event.error == null && event.success !== false
     });
@@ -89,6 +99,27 @@ export function getPublicCompanionGameUrl(config: OctoglyphsConfig | undefined):
     return `${configuredPublicBaseUrl}${normalizedPath}`;
 }
 
+export function getRunId(event: UnknownRecord): string | undefined {
+    const value = event.runId ?? readNestedValue(event, ["ctx", "runId"]) ?? readNestedValue(event, ["context", "runId"]);
+
+    if (typeof value !== "string" || value.trim().length === 0) {
+        return undefined;
+    }
+
+    return value;
+}
+
+function createResponseCompletedEvent(event: UnknownRecord): OctoglyphsEvent {
+    return compactEvent({
+        type: "response.completed",
+        timestamp: Date.now(),
+        duration_ms: safeNonNegativeNumber(event.durationMs ?? event.duration_ms),
+        completion_tokens: safeNonNegativeNumber(readNestedNumber(event, ["usage", "completion_tokens"]) ?? readNestedNumber(event, ["usage", "outputTokens"]) ?? readNestedNumber(event, ["usage", "completionTokens"])),
+        total_tokens: safeNonNegativeNumber(readNestedNumber(event, ["usage", "total_tokens"]) ?? readNestedNumber(event, ["usage", "totalTokens"])),
+        success: normalizeOutcome(event.outcome) !== "failure"
+    });
+}
+
 function compactEvent(event: UnknownRecord): OctoglyphsEvent {
     const output: UnknownRecord = {};
 
@@ -99,6 +130,20 @@ function compactEvent(event: UnknownRecord): OctoglyphsEvent {
     }
 
     return output as OctoglyphsEvent;
+}
+
+function readNestedValue(source: UnknownRecord, path: string[]): unknown {
+    let current: unknown = source;
+
+    for (const key of path) {
+        if (current == null || typeof current !== "object") {
+            return undefined;
+        }
+
+        current = (current as UnknownRecord)[key];
+    }
+
+    return current;
 }
 
 function readNestedNumber(source: UnknownRecord, path: string[]): number | undefined {
@@ -197,14 +242,6 @@ function categorizeToolName(name: string): string {
     }
 
     return "other";
-}
-
-function readRecord(value: unknown): UnknownRecord | undefined {
-    if (value == null || typeof value !== "object" || Array.isArray(value)) {
-        return undefined;
-    }
-
-    return value as UnknownRecord;
 }
 
 function normalizeUrl(value: unknown): string | undefined {
