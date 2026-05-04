@@ -4,14 +4,21 @@ This file is the chronological handoff record for OctoGlyphs. Read this first wh
 
 ## Current Resume Point
 
-OctoGlyphs Phase 1 is implemented through all core systems plus the Isaac-style composable bullet flag system, named synergy set bonuses, starting-power rebalance, loadout/shop sorting quality-of-life, media support, readable shallow/deep hunt backgrounds, hardened endless-wave transitions, expanded enemy variety, boss patterns, difficulty events, explicit XP breakpoints, smarter upgrade draft logic, Step 9 boss reward choices, Step 10 real-data hunt recap, Step 11 enemy behavior variety, the sprite-shaped pickup glow pass, Step 12 mutation feel pass one, octo boss projectile patterns, and the first Claude Code plugin flow. Every single trait in the catalog (30 bodies, 30 eyes, 92 hats, 14 clothes, 24 boosts, 10 legendaries, 4 halloween) now has unique `huntMods` that flip composable bullet flags. No item is "just +Luck 0.03x" anymore — every item changes how the hunt plays.
+OctoGlyphs Phase 1 is implemented through all core systems plus the Isaac-style composable bullet flag system, named synergy set bonuses, starting-power rebalance, loadout/shop sorting quality-of-life, media support, readable shallow/deep hunt backgrounds, hardened endless-wave transitions, expanded enemy variety, boss patterns, difficulty events, explicit XP breakpoints, smarter upgrade draft logic, Step 9 boss reward choices, Step 10 real-data hunt recap, Step 11 enemy behavior variety, the sprite-shaped pickup glow pass, Step 12 mutation feel pass one, octo boss projectile patterns, the first Claude Code plugin flow, native Hermes support, and shared OctoGlyphs branding. Every single trait in the catalog (30 bodies, 30 eyes, 92 hats, 14 clothes, 24 boosts, 10 legendaries, 4 halloween) now has unique `huntMods` that flip composable bullet flags. No item is "just +Luck 0.03x" anymore — every item changes how the hunt plays.
 
-### Latest: Fix Hermes Visible-Unfocused Tank Rendering
+### Latest: Add OctoGlyphs Logo Branding
 - **Commit**: This commit.
+- **Changed**: Added Ed's `octo-logo.jpg` as repo-owned web branding, switched the game favicon and Apple touch icon from the inline octopus emoji SVG to the JPEG logo, placed the logo at the top of the GitHub README, and updated the README tagline to name OpenClaw, Claude Code, and Hermes. Rebuilt the game bundle and synced the branded public output into the tracked Claude Code and Hermes plugin public folders.
+- **Why**: OctoGlyphs now has three working host plugins and needs recognizable launch branding in browser tabs, installed plugin tanks, and the public GitHub landing page.
+- **Verification**: `npm run build` passed from `game/`; `game/dist/octo-logo.jpg`, `plugin/hosts/claude-code/public/octo-logo.jpg`, and `plugin/hosts/hermes/public/octo-logo.jpg` all exist; both tracked plugin `index.html` files reference `octo-logo.jpg`. Only the expected Vite large chunk warning appeared.
+- **What's next**: Pull from `OctoGlyphs/OctoGlyphs` on test machines, hard-refresh each host tank, and confirm the favicon/logo appears in OpenClaw packaging, Claude Code, and Hermes.
+
+### Previous: Fix Hermes Visible-Unfocused Tank Rendering
+- **Commit**: `1905adc` in the public `OctoGlyphs/OctoGlyphs` release repo (`Fix Hermes visible tank rendering`).
 - **Changed**: Updated shared tank background collection logic so the background ledger only activates when the page is actually hidden, not merely when the browser window is visible but unfocused. Rebuilt and synced the Hermes plugin public tank bundle so `plugin/hosts/hermes/public/` carries the same shared game behavior.
 - **Why**: Ed's live Hermes test showed a visible-but-unfocused tank could increment the gem counter while gems failed to render, with the octo rapidly jumping between invisible collection positions. The tank should keep live swim/rendering when it is still visible behind Hermes, and reserve ledger reconciliation for genuinely hidden/background-tab cases.
 - **Verification**: `npm run build` passed from `game/`; Ed rebuilt, synced, reinstalled the Hermes plugin into `~/.hermes/plugins/octoglyphs`, opened `http://localhost:18792/octoglyphs`, and confirmed the visible-unfocused Hermes flow now works.
-- **What's next**: Push to `OctoGlyphs/OctoGlyphs`, then pull on any test machine, reinstall the Hermes plugin copy, and verify prompt gems plus at least one tool reward under the native Hermes host.
+- **What's next**: Superseded by the OctoGlyphs logo branding pass above; next live checks should confirm branding appears in each host tank.
 
 ### Previous: Add Native Hermes Plugin Scaffold
 - **Commit**: `1956e7c` in the public `OctoGlyphs/OctoGlyphs` release repo (`Add Hermes plugin scaffold`).

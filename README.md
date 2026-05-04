@@ -1,10 +1,14 @@
 # OctoGlyphs
 
-**Prompt Fed Octo Companion for OpenClaw.**
+<p align="center">
+  <img src="game/public/octo-logo.jpg" alt="OctoGlyphs logo" width="160" />
+</p>
+
+**Prompt Fed Octo Companion for OpenClaw, Claude Code, and Hermes.**
 
 OctoGlyphs is a privacy-first companion game that turns safe AI-work activity metadata into gems, traits, music, and tank-life progression. Your octo grows while you work, but the plugin never reads your prompts, responses, code, files, diffs, terminal output, or secrets.
 
-OpenClaw is the first supported host. Claude Code, Hermes, iMember, and other host integrations are planned later.
+OpenClaw, Claude Code, and Hermes are the first supported hosts. iMember and other host integrations can follow the same privacy-safe bridge pattern.
 
 ## What it feels like
 
