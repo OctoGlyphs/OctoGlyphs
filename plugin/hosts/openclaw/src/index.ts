@@ -5,6 +5,8 @@ import { ensureOctoGlyphsLocalServer } from "./localServer.js";
 import {
     createAgentEndModelEndedEvent,
     createAgentEndPromptSentEvent,
+    createInboundMessagePromptSentEvent,
+    createInboundMessageResponseFallbackEvent,
     createMessageSentModelEndedEvent,
     createModelEndedEvent,
     createModelStartedEvent,
@@ -30,7 +32,9 @@ const runsWithTurnActivity = new Set<string>();
 const runsWithResponseCompletion = new Set<string>();
 const recentTurnActivityKeys = new Set<string>();
 const recentResponseCompletionKeys = new Set<string>();
+const fallbackResponseTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const MAX_TRACKED_RUNS = 500;
+const RESPONSE_FALLBACK_DELAY_MS = 2500;
 
 export default definePluginEntry({
     id: "octoglyphs",
@@ -119,6 +123,7 @@ export default definePluginEntry({
             }
 
             rememberResponseCompletion(event);
+            cancelResponseFallback(event);
             emitOctoGlyphsEvent(config, createMessageSentModelEndedEvent(event));
         });
 
@@ -131,7 +136,20 @@ export default definePluginEntry({
 
             emitOctoGlyphsEvent(config, createAgentEndPromptSentEvent(event));
             rememberResponseCompletion(event);
+            cancelResponseFallback(event);
             emitOctoGlyphsEvent(config, createAgentEndModelEndedEvent(event));
+        });
+
+        registerHook(api as PluginApiWithHook, "message_received", async (event: HookEvent) => {
+            const config = event.context?.pluginConfig;
+
+            if (!shouldEmitModelEvents(config) || hasActivityForRun(event)) {
+                return;
+            }
+
+            rememberTurnActivity(event);
+            emitOctoGlyphsEvent(config, createInboundMessagePromptSentEvent(event));
+            scheduleResponseFallback(config, event);
         });
 
         registerHook(api as PluginApiWithHook, "after_tool_call", async (event: HookEvent) => {
@@ -214,6 +232,48 @@ function hasResponseCompletionForRun(event: HookEvent): boolean {
     }
 
     return recentResponseCompletionKeys.has(createRecentActivityKey());
+}
+
+function scheduleResponseFallback(config: Record<string, unknown> | undefined, event: HookEvent): void {
+    const fallbackKey = getFallbackKey(event);
+    const existingTimer = fallbackResponseTimers.get(fallbackKey);
+
+    if (existingTimer) {
+        clearTimeout(existingTimer);
+    }
+
+    const timer = setTimeout(() => {
+        fallbackResponseTimers.delete(fallbackKey);
+
+        if (hasResponseCompletionForRun(event)) {
+            return;
+        }
+
+        rememberResponseCompletion(event);
+        emitOctoGlyphsEvent(config, createInboundMessageResponseFallbackEvent(event));
+    }, RESPONSE_FALLBACK_DELAY_MS);
+
+    if (typeof timer.unref === "function") {
+        timer.unref();
+    }
+
+    fallbackResponseTimers.set(fallbackKey, timer);
+}
+
+function cancelResponseFallback(event: HookEvent): void {
+    const fallbackKey = getFallbackKey(event);
+    const timer = fallbackResponseTimers.get(fallbackKey);
+
+    if (!timer) {
+        return;
+    }
+
+    clearTimeout(timer);
+    fallbackResponseTimers.delete(fallbackKey);
+}
+
+function getFallbackKey(event: HookEvent): string {
+    return getRunId(event) ?? createRecentActivityKey();
 }
 
 function rememberSetValue(set: Set<string>, value: string): void {

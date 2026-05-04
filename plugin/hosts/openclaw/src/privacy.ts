@@ -67,6 +67,23 @@ export function createTurnStartedPromptSentEvent(_event: UnknownRecord): Octogly
     });
 }
 
+export function createInboundMessagePromptSentEvent(_event: UnknownRecord): OctoglyphsEvent {
+    return compactEvent({
+        type: "prompt.sent",
+        timestamp: Date.now(),
+        source: "message_received"
+    });
+}
+
+export function createInboundMessageResponseFallbackEvent(_event: UnknownRecord): OctoglyphsEvent {
+    return compactEvent({
+        type: "response.completed",
+        timestamp: Date.now(),
+        source: "message_received_fallback",
+        success: true
+    });
+}
+
 export function createAgentEndModelEndedEvent(event: UnknownRecord): OctoglyphsEvent {
     return compactEvent({
         ...createResponseCompletedEvent(event),

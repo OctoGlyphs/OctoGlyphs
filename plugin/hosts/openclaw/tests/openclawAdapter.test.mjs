@@ -82,7 +82,7 @@ assert.equal(streamResponse.headers["content-type"], "text/event-stream; charset
 
 assert.deepEqual(
     registrations.map((registration) => registration.hookName),
-    ["model_call_started", "model_call_ended", "agent_turn_prepare", "message_sent", "agent_end", "after_tool_call"]
+    ["model_call_started", "model_call_ended", "agent_turn_prepare", "message_sent", "agent_end", "message_received", "after_tool_call"]
 );
 
 for (const registration of registrations) {
@@ -96,18 +96,22 @@ await registrations[3].handler({ context: { pluginConfig: { emitModelEvents: tru
 await registrations[4].handler({ context: { pluginConfig: { emitModelEvents: true, emitToolEvents: true } }, runId: "model-run", durationMs: 55, outcome: "success", messages: [{ content: "must not leak final message" }] });
 await registrations[4].handler({ context: { pluginConfig: { emitModelEvents: true, emitToolEvents: true } }, runId: "turn-run", durationMs: 55, outcome: "success", messages: [{ content: "must not leak final message" }], finalMessage: "must not leak final text" });
 await registrations[4].handler({ context: { pluginConfig: { emitModelEvents: true, emitToolEvents: true } }, runId: "plain-chat-run", durationMs: 55, outcome: "success", messages: [{ content: "must not leak final message" }], finalMessage: "must not leak final text" });
-await registrations[5].handler({ context: { pluginConfig: { emitModelEvents: true, emitToolEvents: true } }, toolName: "write_file", params: { path: "secret" }, result: "must not leak", durationMs: 50 });
+await registrations[5].handler({ context: { pluginConfig: { emitModelEvents: true, emitToolEvents: true } }, runId: "inbound-run", content: "must not leak inbound prompt", metadata: { senderName: "secret sender" } });
+await new Promise((resolve) => setTimeout(resolve, 2600));
+await registrations[6].handler({ context: { pluginConfig: { emitModelEvents: true, emitToolEvents: true } }, toolName: "write_file", params: { path: "secret" }, result: "must not leak", durationMs: 50 });
 
 streamResponse.end();
 
 const streamText = streamResponse.body;
-assert.equal((streamText.match(/event: octoglyphs/g) ?? []).length, 9);
+assert.equal((streamText.match(/event: octoglyphs/g) ?? []).length, 11);
 assert.equal(streamText.includes("octoglyphs.events.v1"), true);
 assert.equal(streamText.includes("prompt.sent"), true);
 assert.equal(streamText.includes("response.started"), true);
 assert.equal(streamText.includes("response.completed"), true);
 assert.equal(streamText.includes("tool.used"), true);
 assert.equal(streamText.includes("file_write"), true);
+assert.equal(streamText.includes("message_received"), true);
+assert.equal(streamText.includes("message_received_fallback"), true);
 assert.equal(streamText.includes("prompt_chars"), true);
 assert.equal(streamText.includes("prompt_tokens"), true);
 assert.equal(streamText.includes("must not leak"), false);
@@ -118,6 +122,7 @@ assert.equal(streamText.includes("must not leak turn history"), false);
 assert.equal(streamText.includes("must not leak final message"), false);
 assert.equal(streamText.includes("must not leak final text"), false);
 assert.equal(streamText.includes("must not leak outbound message"), false);
+assert.equal(streamText.includes("must not leak inbound prompt"), false);
 assert.equal(streamText.includes("secret"), false);
 assert.equal(streamText.includes("params"), false);
 assert.equal(streamText.includes("result"), false);
