@@ -14,13 +14,29 @@ async function loadPixelFont() {
     await document.fonts.ready;
 }
 
+const VIRTUAL_APP_WIDTH = 1280;
+const VIRTUAL_APP_HEIGHT = 720;
+
+function updateAppScale() {
+    const scaleRoot = document.getElementById("panel-root");
+    const viewport = document.getElementById("app-viewport");
+    if (!scaleRoot || !viewport) return;
+
+    const bounds = viewport.getBoundingClientRect();
+    const scale = Math.min(bounds.width / VIRTUAL_APP_WIDTH, bounds.height / VIRTUAL_APP_HEIGHT);
+    scaleRoot.style.setProperty("--octoglyphs-app-scale", String(scale));
+}
+
+updateAppScale();
+window.addEventListener("resize", updateAppScale);
+
 await loadPixelFont();
 
 const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: "game-root",
-    width: 360,
-    height: 640,
+    width: VIRTUAL_APP_WIDTH,
+    height: VIRTUAL_APP_HEIGHT - 126,
     backgroundColor: "#061827",
     pixelArt: true,
     roundPixels: true,
@@ -31,8 +47,10 @@ const game = new Phaser.Game({
         }
     },
     scale: {
-        mode: Phaser.Scale.RESIZE,
-        autoCenter: Phaser.Scale.CENTER_BOTH
+        mode: Phaser.Scale.FIT,
+        autoCenter: Phaser.Scale.CENTER_BOTH,
+        width: VIRTUAL_APP_WIDTH,
+        height: VIRTUAL_APP_HEIGHT - 126
     },
     scene: [BootScene, IncubationScene, UIScene]
 });
