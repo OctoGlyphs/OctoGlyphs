@@ -38,6 +38,7 @@ body {
     grid-template-rows: auto 1fr auto;
     width: 1280px;
     height: 720px;
+    overflow: hidden;
     transform: translate(-50%, -50%) scale(var(--octoglyphs-app-scale, 1));
     transform-origin: center center;
 }
@@ -142,12 +143,17 @@ button:disabled {
 }
 
 #game-root {
+    position: relative;
+    width: 1280px;
+    height: 594px;
     min-height: 0;
     overflow: hidden;
 }
 
 #game-root canvas {
     display: block;
+    width: 1280px !important;
+    height: 594px !important;
 }
 
 body.plugin-mode .topbar {
@@ -178,7 +184,7 @@ body.plugin-mode .hud {
     top: 58px;
     right: 10px;
     bottom: 76px;
-    width: min(520px, calc(100vw - 20px));
+    width: min(520px, calc(1280px - 20px));
     overflow: hidden;
     transform: translateX(calc(100% + 20px));
     transition: transform 180ms ease;

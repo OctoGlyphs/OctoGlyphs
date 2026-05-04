@@ -47,8 +47,7 @@ const game = new Phaser.Game({
         }
     },
     scale: {
-        mode: Phaser.Scale.FIT,
-        autoCenter: Phaser.Scale.CENTER_BOTH,
+        mode: Phaser.Scale.NONE,
         width: VIRTUAL_APP_WIDTH,
         height: VIRTUAL_APP_HEIGHT - 126
     },
