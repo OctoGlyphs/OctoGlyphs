@@ -5,9 +5,11 @@ import { ensureOctoGlyphsLocalServer } from "./localServer.js";
 import {
     createAgentEndModelEndedEvent,
     createAgentEndPromptSentEvent,
+    createMessageSentModelEndedEvent,
     createModelEndedEvent,
     createModelStartedEvent,
     createPromptSentEvent,
+    createTurnStartedPromptSentEvent,
     createToolUsedEvent,
     getCompanionGameUrl,
     getPublicCompanionGameUrl,
@@ -24,6 +26,10 @@ type HookEvent = {
 };
 
 const runsWithModelActivity = new Set<string>();
+const runsWithTurnActivity = new Set<string>();
+const runsWithResponseCompletion = new Set<string>();
+const recentTurnActivityKeys = new Set<string>();
+const recentResponseCompletionKeys = new Set<string>();
 const MAX_TRACKED_RUNS = 500;
 
 export default definePluginEntry({
@@ -89,17 +95,42 @@ export default definePluginEntry({
             }
 
             rememberRunWithModelActivity(event);
+            rememberResponseCompletion(event);
             emitOctoGlyphsEvent(config, createModelEndedEvent(event));
+        });
+
+        registerHook(api as PluginApiWithHook, "agent_turn_prepare", async (event: HookEvent) => {
+            const config = event.context?.pluginConfig;
+
+            if (!shouldEmitModelEvents(config)) {
+                return;
+            }
+
+            rememberTurnActivity(event);
+            emitOctoGlyphsEvent(config, createTurnStartedPromptSentEvent(event));
+            emitOctoGlyphsEvent(config, createModelStartedEvent(event));
+        });
+
+        registerHook(api as PluginApiWithHook, "message_sent", async (event: HookEvent) => {
+            const config = event.context?.pluginConfig;
+
+            if (!shouldEmitModelEvents(config) || hasResponseCompletionForRun(event)) {
+                return;
+            }
+
+            rememberResponseCompletion(event);
+            emitOctoGlyphsEvent(config, createMessageSentModelEndedEvent(event));
         });
 
         registerHook(api as PluginApiWithHook, "agent_end", async (event: HookEvent) => {
             const config = event.context?.pluginConfig;
 
-            if (!shouldEmitModelEvents(config) || hasModelActivityForRun(event)) {
+            if (!shouldEmitModelEvents(config) || hasActivityForRun(event)) {
                 return;
             }
 
             emitOctoGlyphsEvent(config, createAgentEndPromptSentEvent(event));
+            rememberResponseCompletion(event);
             emitOctoGlyphsEvent(config, createAgentEndModelEndedEvent(event));
         });
 
@@ -140,21 +171,65 @@ function rememberRunWithModelActivity(event: HookEvent): void {
         return;
     }
 
-    runsWithModelActivity.add(runId);
+    rememberSetValue(runsWithModelActivity, runId);
+}
 
-    if (runsWithModelActivity.size > MAX_TRACKED_RUNS) {
-        const oldestRunId = runsWithModelActivity.values().next().value;
+function rememberTurnActivity(event: HookEvent): void {
+    const runId = getRunId(event);
 
-        if (oldestRunId) {
-            runsWithModelActivity.delete(oldestRunId);
+    if (runId) {
+        rememberSetValue(runsWithTurnActivity, runId);
+        return;
+    }
+
+    rememberSetValue(recentTurnActivityKeys, createRecentActivityKey());
+}
+
+function hasActivityForRun(event: HookEvent): boolean {
+    const runId = getRunId(event);
+
+    if (runId) {
+        return runsWithModelActivity.has(runId) || runsWithTurnActivity.has(runId);
+    }
+
+    return recentTurnActivityKeys.has(createRecentActivityKey());
+}
+
+function rememberResponseCompletion(event: HookEvent): void {
+    const runId = getRunId(event);
+
+    if (runId) {
+        rememberSetValue(runsWithResponseCompletion, runId);
+        return;
+    }
+
+    rememberSetValue(recentResponseCompletionKeys, createRecentActivityKey());
+}
+
+function hasResponseCompletionForRun(event: HookEvent): boolean {
+    const runId = getRunId(event);
+
+    if (runId) {
+        return runsWithResponseCompletion.has(runId);
+    }
+
+    return recentResponseCompletionKeys.has(createRecentActivityKey());
+}
+
+function rememberSetValue(set: Set<string>, value: string): void {
+    set.add(value);
+
+    if (set.size > MAX_TRACKED_RUNS) {
+        const oldestValue = set.values().next().value;
+
+        if (oldestValue) {
+            set.delete(oldestValue);
         }
     }
 }
 
-function hasModelActivityForRun(event: HookEvent): boolean {
-    const runId = getRunId(event);
-
-    return runId ? runsWithModelActivity.has(runId) : false;
+function createRecentActivityKey(): string {
+    return String(Math.floor(Date.now() / 5000));
 }
 
 function emitOctoGlyphsEvent(config: Record<string, unknown> | undefined, event: Record<string, unknown>): void {

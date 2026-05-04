@@ -17,20 +17,14 @@ This guide validates the real public-user target flow: install one OpenClaw plug
 - OpenClaw installed on the fresh machine.
 - A local checkout or copied archive of this repository.
 
-On this workspace, the project root is:
-
-```bash
-/home/crai/Desktop/OctoBlast-Mobile-2.0-Abstract-Integration/PrimordialAI
-```
-
-On the fresh machine, replace that with wherever the project was copied or cloned.
+On the fresh machine, replace `/path/to/OctoGlyphs` with wherever the project was copied or cloned.
 
 ## 1. Build and verify the plugin package
 
 From the plugin package directory:
 
 ```bash
-cd /path/to/PrimordialAI/octoglyphs/plugin/hosts/openclaw
+cd /path/to/OctoGlyphs/plugin/hosts/openclaw
 npm install
 npm run typecheck && npm test
 ```
@@ -44,7 +38,7 @@ OpenClaw adapter contract assertions passed.
 This command also builds the Phaser game and copies the built files into:
 
 ```text
-/path/to/PrimordialAI/octoglyphs/plugin/hosts/openclaw/public
+/path/to/OctoGlyphs/plugin/hosts/openclaw/public
 ```
 
 The publish package is intentionally trimmed to generated/runtime assets only. It keeps required generated sprites, selected backgrounds, music, UI audio icons, compiled JS/CSS, and OpenClaw runtime files, but drops unused raw source GIF folders from the packaged companion.
@@ -54,13 +48,13 @@ The publish package is intentionally trimmed to generated/runtime assets only. I
 Install from the local package path:
 
 ```bash
-openclaw plugins install /path/to/PrimordialAI/octoglyphs/plugin/hosts/openclaw
+openclaw plugins install /path/to/OctoGlyphs/plugin/hosts/openclaw
 ```
 
 For a closer simulation of the eventual npm package, install the generated tarball instead:
 
 ```bash
-cd /path/to/PrimordialAI/octoglyphs/plugin/hosts/openclaw
+cd /path/to/OctoGlyphs/plugin/hosts/openclaw
 npm run pack:local
 openclaw plugins install ./octoglyphs-openclaw-plugin-0.1.0.tgz
 ```

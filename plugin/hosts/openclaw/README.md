@@ -32,10 +32,10 @@ Users should not need to run the Phaser/Vite development server.
 Until npm or ClawHub publishing is ready, install from a local checkout:
 
 ```bash
-cd /path/to/PrimordialAI/octoglyphs/plugin/hosts/openclaw
+cd /path/to/OctoGlyphs/plugin/hosts/openclaw
 npm install
 npm run typecheck && npm test
-openclaw plugins install /path/to/PrimordialAI/octoglyphs/plugin/hosts/openclaw
+openclaw plugins install /path/to/OctoGlyphs/plugin/hosts/openclaw
 openclaw gateway restart
 ```
 
@@ -51,7 +51,9 @@ Allowed hooks:
 
 - `model_call_started`
 - `model_call_ended`
-- `agent_end`, used only as a generic fallback when sanitized model-call hooks do not fire for a normal turn
+- `agent_turn_prepare`, used only as a content-blind turn-start signal when sanitized model-call hooks do not fire for a normal turn
+- `message_sent`, used only as a content-blind response-complete fallback when model-call completion hooks do not fire
+- `agent_end`, used only as a generic fallback when sanitized model-call and turn/message hooks do not fire for a normal turn
 - `after_tool_call`
 - Later: `session_start`, `session_end`, `gateway_start`, and `gateway_stop`
 
@@ -64,7 +66,7 @@ Forbidden hooks unless a future opt-in debug build creates a stronger sanitizer 
 - `before_prompt_build`
 - `before_tool_call`
 
-The adapter intentionally emits prompt activity from `model_call_started` when possible, not `before_prompt_build`, so it does not subscribe to the prompt-construction hook. Some OpenClaw runtimes do not fire sanitized model-call telemetry for plain chat turns, so `agent_end` is also registered as a content-blind fallback. The fallback emits generic activity only and does not read final messages.
+The adapter intentionally emits prompt activity from `model_call_started` when possible, not `before_prompt_build`, so it does not subscribe to the prompt-construction hook. Some OpenClaw runtimes do not fire sanitized model-call telemetry for plain chat turns, so `agent_turn_prepare`, `message_sent`, and `agent_end` are also registered as content-blind fallbacks. These fallbacks emit generic activity only and never read prompt, message, final-response, history, or dispatch content.
 
 The adapter only emits OctoGlyphs protocol events with safe fields such as event type, timestamp, duration, host-provided token counts or character counts when available, success, and normalized tool category.
 

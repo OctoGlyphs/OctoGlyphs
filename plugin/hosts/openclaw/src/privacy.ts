@@ -59,10 +59,25 @@ export function createAgentEndPromptSentEvent(_event: UnknownRecord): Octoglyphs
     });
 }
 
+export function createTurnStartedPromptSentEvent(_event: UnknownRecord): OctoglyphsEvent {
+    return compactEvent({
+        type: "prompt.sent",
+        timestamp: Date.now(),
+        source: "agent_turn_prepare"
+    });
+}
+
 export function createAgentEndModelEndedEvent(event: UnknownRecord): OctoglyphsEvent {
     return compactEvent({
         ...createResponseCompletedEvent(event),
         source: "agent_end"
+    });
+}
+
+export function createMessageSentModelEndedEvent(event: UnknownRecord): OctoglyphsEvent {
+    return compactEvent({
+        ...createResponseCompletedEvent(event),
+        source: "message_sent"
     });
 }
 
