@@ -6,12 +6,19 @@ This file is the chronological handoff record for OctoGlyphs. Read this first wh
 
 OctoGlyphs Phase 1 is implemented through all core systems plus the Isaac-style composable bullet flag system, named synergy set bonuses, starting-power rebalance, loadout/shop sorting quality-of-life, media support, readable shallow/deep hunt backgrounds, hardened endless-wave transitions, expanded enemy variety, boss patterns, difficulty events, explicit XP breakpoints, smarter upgrade draft logic, Step 9 boss reward choices, Step 10 real-data hunt recap, Step 11 enemy behavior variety, the sprite-shaped pickup glow pass, Step 12 mutation feel pass one, octo boss projectile patterns, and the first Claude Code plugin flow. Every single trait in the catalog (30 bodies, 30 eyes, 92 hats, 14 clothes, 24 boosts, 10 legendaries, 4 halloween) now has unique `huntMods` that flip composable bullet flags. No item is "just +Luck 0.03x" anymore — every item changes how the hunt plays.
 
-### Latest: Add Native Hermes Plugin Scaffold
+### Latest: Fix Hermes Visible-Unfocused Tank Rendering
 - **Commit**: This commit.
+- **Changed**: Updated shared tank background collection logic so the background ledger only activates when the page is actually hidden, not merely when the browser window is visible but unfocused. Rebuilt and synced the Hermes plugin public tank bundle so `plugin/hosts/hermes/public/` carries the same shared game behavior.
+- **Why**: Ed's live Hermes test showed a visible-but-unfocused tank could increment the gem counter while gems failed to render, with the octo rapidly jumping between invisible collection positions. The tank should keep live swim/rendering when it is still visible behind Hermes, and reserve ledger reconciliation for genuinely hidden/background-tab cases.
+- **Verification**: `npm run build` passed from `game/`; Ed rebuilt, synced, reinstalled the Hermes plugin into `~/.hermes/plugins/octoglyphs`, opened `http://localhost:18792/octoglyphs`, and confirmed the visible-unfocused Hermes flow now works.
+- **What's next**: Push to `OctoGlyphs/OctoGlyphs`, then pull on any test machine, reinstall the Hermes plugin copy, and verify prompt gems plus at least one tool reward under the native Hermes host.
+
+### Previous: Add Native Hermes Plugin Scaffold
+- **Commit**: `1956e7c` in the public `OctoGlyphs/OctoGlyphs` release repo (`Add Hermes plugin scaffold`).
 - **Changed**: Added `plugin/hosts/hermes/` with a native Python Hermes plugin manifest, hook registration, `/octoglyphs` slash command, metadata-only event mapper, small Python sidecar server, copied shared tank bundle, README, and unit tests.
 - **Why**: Hermes is the next target host after OpenClaw and Claude Code. The plugin should feel native to Hermes users while preserving the same passive, privacy-first OctoGlyphs boundary: observe safe metadata only, never inject context, never send raw prompts/responses/files/tool args/terminal output.
 - **Verification**: `python3 -m py_compile plugin/hosts/hermes/__init__.py plugin/hosts/hermes/octoglyphs_sidecar.py plugin/hosts/hermes/tests/test_hermes_plugin.py` passed. `python3 -m unittest discover -s plugin/hosts/hermes/tests` passed. A temporary `HERMES_HOME` install/list check showed Hermes discovers OctoGlyphs as an enabled local plugin.
-- **What's next**: Copy the plugin into `~/.hermes/plugins/octoglyphs`, enable it, run a live Hermes session, open `http://localhost:18792/octoglyphs`, verify prompt gems and tool rewards, then polish install/distribution flow if Hermes GitHub install requires a repo-root `plugin.yaml`.
+- **What's next**: Superseded by the Hermes visible-unfocused rendering fix above; next live checks should focus on prompt gems, tool rewards, and distribution flow.
 
 ### Previous: Fix Claude Code Background Gem Reconciliation
 - **Commit**: `1640ef7` in the public `OctoGlyphs/OctoGlyphs` release repo (`Fix unfocused tank gem reconciliation`).

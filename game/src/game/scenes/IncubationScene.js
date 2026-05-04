@@ -1236,7 +1236,7 @@ export class IncubationScene extends Scene {
     }
 
     isBackgroundCollectMode() {
-        return (this.isPageHidden || !this.isWindowFocused) && !this.tankHuntActive;
+        return this.isPageHidden && !this.tankHuntActive;
     }
 
     startTankHunt() {
