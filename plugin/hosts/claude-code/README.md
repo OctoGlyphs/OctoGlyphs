@@ -38,7 +38,31 @@ cd plugin/hosts/claude-code
 npm test
 ```
 
-To try it in Claude Code, load this folder as a local plugin directory using Claude Code's plugin development flow, then open the companion URL.
+To try it in Claude Code without installing the launcher, load this folder as a local plugin directory:
+
+```bash
+claude --plugin-dir .
+```
+
+For source installs, install the `claude-octoglyphs` launcher once:
+
+```bash
+npm run install:launcher
+```
+
+Then start Claude Code with OctoGlyphs attached from any directory:
+
+```bash
+claude-octoglyphs
+```
+
+Any extra arguments are passed through to Claude Code, for example:
+
+```bash
+claude-octoglyphs --model sonnet
+```
+
+If `claude-octoglyphs` is not found after installation, add `~/.local/bin` to your shell `PATH`.
 
 Default URL:
 

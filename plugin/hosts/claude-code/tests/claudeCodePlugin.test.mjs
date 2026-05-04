@@ -15,12 +15,19 @@ assert.ok(hooks.hooks.PostToolUse);
 assert.ok(hooks.hooks.PostToolUseFailure);
 assert.ok(hooks.hooks.Stop);
 assert.ok(hooks.hooks.SessionStart);
-
 assert.equal(hookScript.includes("source.prompt"), true);
 assert.equal(hookScript.includes("source.last_assistant_message.length"), true);
 assert.equal(hookScript.includes("source.last_assistant_message,"), false);
 assert.equal(hookScript.includes("tool_response"), false);
 assert.equal(hookScript.includes("transcript_path"), false);
+
+const packageJson = JSON.parse(await readFile(resolve(pluginRoot, "package.json"), "utf8"));
+const launcherScript = await readFile(resolve(pluginRoot, "bin/claude-octoglyphs.mjs"), "utf8");
+assert.equal(packageJson.bin["claude-octoglyphs"], "./bin/claude-octoglyphs.mjs");
+assert.equal(packageJson.scripts["install:launcher"], "node scripts/install-launcher.mjs");
+assert.equal(packageJson.files.includes("bin/"), true);
+assert.equal(launcherScript.includes("--plugin-dir"), true);
+assert.equal(launcherScript.includes("CLAUDE_CODE_BIN"), true);
 
 const port = 19891;
 await runHook({
@@ -37,7 +44,7 @@ const body = await health.json();
 assert.equal(body.host, "claude-code");
 assert.equal(body.protocol, "octoglyphs.events.v1");
 
-const streamEvent = await readOneStreamEvent(port);
+const streamEvent = readOneStreamEvent(port);
 await runHook({
     hook_event_name: "PostToolUse",
     tool_name: "Bash",
