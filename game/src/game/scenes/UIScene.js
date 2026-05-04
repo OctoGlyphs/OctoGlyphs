@@ -98,6 +98,7 @@ export class UIScene extends Scene {
         this.game.events.on("octoglyphs:notice", message => this.setNotice(message));
         this.game.events.on("octoglyphs:hunt-state", state => this.renderHuntState(state));
         this.game.events.on("octoglyphs:hunt-charge", charge => this.renderHuntCharge(charge));
+        this.game.events.on("octoglyphs:visibility", state => this.renderVisibilityState(state));
         this.game.events.on("octoglyphs:inventory-changed", () => {
             this.save = loadSave();
             this.renderShop();
@@ -193,7 +194,15 @@ export class UIScene extends Scene {
             stats.textContent = `Stats ${formatFinalStats(state.stats || equippedStats(this.save))}`;
         }
 
+        this.renderVisibilityState(this.visibilityState || "visible · focused · live swim");
         this.save = loadSave();
+    }
+
+    renderVisibilityState(state) {
+        this.visibilityState = state;
+        const mode = document.getElementById("mode-readout");
+        if (!mode) return;
+        mode.textContent = `Autopilot · ${state}`;
     }
 
     renderHuntCharge(charge, force = false) {

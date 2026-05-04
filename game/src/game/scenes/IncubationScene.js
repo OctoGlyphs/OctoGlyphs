@@ -533,6 +533,7 @@ export class IncubationScene extends Scene {
         this.backgroundLedgerOcto = null;
         this.backgroundLedgerAvailableAt = 0;
         this.isPageHidden = typeof document !== "undefined" && document.visibilityState === "hidden";
+        this.isWindowFocused = typeof document === "undefined" || typeof document.hasFocus !== "function" || document.hasFocus();
         this.visibilityPauseStartedAt = 0;
     }
 
@@ -597,7 +598,7 @@ export class IncubationScene extends Scene {
             window.addEventListener("blur", this.handleVisibilityChange);
             window.addEventListener("focus", this.handleVisibilityChange);
         }
-
+        this.emitVisibilityDiagnostics();
         this.time.addEvent({ delay: 320, loop: true, callback: () => this.autopilot() });
         this.time.addEvent({ delay: 45, loop: true, callback: () => this.animateGems() });
         this.time.addEvent({ delay: 80, loop: true, callback: () => this.animateTraits() });
@@ -1181,11 +1182,16 @@ export class IncubationScene extends Scene {
         };
     }
     onVisibilityChanged() {
-        const hidden = Boolean(document?.hidden) || document?.visibilityState === "hidden" || (typeof document?.hasFocus === "function" && !document.hasFocus());
-        if (hidden === this.isPageHidden) return;
+        const previousBackgroundMode = this.isBackgroundCollectMode();
+        const hidden = typeof document !== "undefined" && (Boolean(document.hidden) || document.visibilityState === "hidden");
+        const focused = typeof document === "undefined" || typeof document.hasFocus !== "function" || document.hasFocus();
+        const wasHidden = this.isPageHidden;
 
         this.isPageHidden = hidden;
-        if (hidden) {
+        this.isWindowFocused = focused;
+        this.emitVisibilityDiagnostics();
+
+        if (hidden && !wasHidden) {
             this.visibilityPauseStartedAt = this.time?.now || 0;
             if (this.tankHuntActive) {
                 this.pauseTankHuntForVisibility();
@@ -1194,11 +1200,23 @@ export class IncubationScene extends Scene {
             return;
         }
 
-        if (this.tankHuntActive) {
+        if (!hidden && wasHidden && this.tankHuntActive) {
             this.resumeTankHuntFromVisibility();
             this.game.events.emit("octoglyphs:notice", "Tank Hunt resumed.");
         }
-        this.flushBackgroundCollectedGems();
+
+        if (previousBackgroundMode && !this.isBackgroundCollectMode()) {
+            this.flushBackgroundCollectedGems();
+        }
+    }
+
+    emitVisibilityDiagnostics() {
+        const visibility = typeof document === "undefined" ? "visible" : document.visibilityState || (this.isPageHidden ? "hidden" : "visible");
+        const focus = this.isWindowFocused ? "focused" : "unfocused";
+        const simMode = this.isBackgroundCollectMode() ? "background ledger" : this.tankHuntActive && this.isPageHidden ? "hunt paused" : "live swim";
+        const pending = this.backgroundGemLedger?.length || 0;
+        const pendingText = pending ? ` · ledger ${pending}` : "";
+        this.game.events.emit("octoglyphs:visibility", `${visibility} · ${focus} · ${simMode}${pendingText}`);
     }
 
     pauseTankHuntForVisibility() {
@@ -1218,7 +1236,7 @@ export class IncubationScene extends Scene {
     }
 
     isBackgroundCollectMode() {
-        return this.isPageHidden && !this.tankHuntActive;
+        return (this.isPageHidden || !this.isWindowFocused) && !this.tankHuntActive;
     }
 
     startTankHunt() {
