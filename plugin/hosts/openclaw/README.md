@@ -63,7 +63,9 @@ Forbidden hooks unless a future opt-in debug build creates a stronger sanitizer 
 - `before_prompt_build`
 - `before_tool_call`
 
-The adapter only emits OctoGlyphs protocol events with safe fields such as event type, timestamp, duration, token counts when available, success, and normalized tool category.
+The adapter intentionally emits prompt activity from `model_call_started`, not `before_prompt_build`, so it does not subscribe to the prompt-construction hook.
+
+The adapter only emits OctoGlyphs protocol events with safe fields such as event type, timestamp, duration, host-provided token counts or character counts when available, success, and normalized tool category.
 
 It must never emit prompt text, response text, code, file contents, diffs, stdout, stderr, secrets, full tool params, or full tool results.
 

@@ -40,17 +40,17 @@ The docs list `llm_input`, `llm_output`, and message hooks that expose conversat
 
 The scaffold emits host-neutral OctoGlyphs protocol events:
 
-- `model_call_started` becomes `response.started`.
+- `model_call_started` becomes `prompt.sent` and `response.started`.
 - `model_call_ended` becomes `response.completed`.
 - `after_tool_call` becomes `tool.used`.
 
-All mapping happens through `src/privacy.ts`. The adapter intentionally reduces model/provider names and tool names to coarse categories.
+All mapping happens through `src/privacy.ts`. The adapter intentionally reduces model/provider names and tool names to coarse categories, and never reads prompt/message/input text to estimate rewards.
 
 ## Validation result
 
 The scaffold now type-checks against the installed `openclaw` npm package (`2026.4.27`). One docs/API mismatch was found: docs mention hook `timeoutMs`, but the published `OpenClawPluginApi.on(...)` type currently only accepts `{ priority?: number }`. The adapter now uses `{ priority: 0 }` and keeps its own fetch abort timeout inside `emitToCompanion(...)`.
 
-A local adapter contract test imports the built plugin entry, captures registered hooks, invokes `model_call_started`, `model_call_ended`, and `after_tool_call`, and asserts the emitted envelopes are protocol-wrapped and content-free.
+A local adapter contract test imports the built plugin entry, captures registered hooks, invokes `model_call_started`, `model_call_ended`, and `after_tool_call`, and asserts the emitted envelopes are protocol-wrapped and content-free. The test injects prompt/message/input strings into the model start event and asserts none reach the stream.
 
 ## Side-panel direction
 
@@ -62,4 +62,4 @@ OpenClaw exposes `api.registerControlUiDescriptor(...)` for Control UI contribut
 
 ## Pending validation
 
-The package has been type-checked and contract-tested against the installed SDK, but not yet installed and run inside a live OpenClaw gateway.
+The package has passed live OpenClaw source and local tarball testing. Before public publish, run one final fresh-machine install from the packed tarball and then verify the npm install path.

@@ -63,16 +63,6 @@ export default definePluginEntry({
             }
         });
 
-        registerHook(api as PluginApiWithHook, "before_prompt_build", async (event: HookEvent) => {
-            const config = event.context?.pluginConfig;
-
-            if (!shouldEmitModelEvents(config)) {
-                return;
-            }
-
-            emitOctoGlyphsEvent(config, createPromptSentEvent(event));
-        });
-
         registerHook(api as PluginApiWithHook, "model_call_started", async (event: HookEvent) => {
             const config = event.context?.pluginConfig;
 
@@ -80,6 +70,7 @@ export default definePluginEntry({
                 return;
             }
 
+            emitOctoGlyphsEvent(config, createPromptSentEvent(event));
             emitOctoGlyphsEvent(config, createModelStartedEvent(event));
         });
 

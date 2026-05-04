@@ -18,6 +18,27 @@
         "ADAPTER_NOTES.md",
         "FRESH_MACHINE_TEST.md"
     ],
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/OctoGlyphs/OctoGlyphs.git",
+        "directory": "plugin/hosts/openclaw"
+    },
+    "homepage": "https://github.com/OctoGlyphs/OctoGlyphs/tree/main/plugin/hosts/openclaw#readme",
+    "bugs": {
+        "url": "https://github.com/OctoGlyphs/OctoGlyphs/issues"
+    },
+    "keywords": [
+        "openclaw",
+        "clawhub",
+        "plugin",
+        "octoglyphs",
+        "ai-companion",
+        "privacy-first",
+        "tamagotchi"
+    ],
+    "publishConfig": {
+        "access": "public"
+    },
     "scripts": {
         "copy:game": "rm -rf public && mkdir -p public && cp -R ../../../game/dist/. public/ && rm -rf public/assets/raw/Halloween\\ assets public/assets/raw/Enemies public/assets/raw/gems public/assets/raw/Old\\ cycles public/assets/raw/UI/Play public/assets/raw/UI/Settings public/assets/raw/Backgrounds/deep2.png public/assets/raw/Backgrounds/deep3.png public/assets/raw/Backgrounds/deep4.png public/assets/raw/Backgrounds/shallow2.png public/assets/raw/Backgrounds/shallow3.png public/assets/raw/Backgrounds/shallow4.png public/assets/raw/Backgrounds/mid*.png public/assets/raw/Backgrounds/newbg*.png",
         "build:game": "npm --prefix ../../../game install && npm --prefix ../../../game run build -- --logLevel warn",
@@ -40,13 +61,17 @@
             "pluginSdkVersion": "2026.3.24-beta.2"
         }
     },
-    "dependencies": {
-        "@sinclair/typebox": "latest"
-    },
+    "dependencies": {},
     "devDependencies": {
+        "openclaw": "2026.4.27",
         "typescript": "latest"
     },
     "peerDependencies": {
         "openclaw": ">=2026.3.24-beta.2"
+    },
+    "peerDependenciesMeta": {
+        "openclaw": {
+            "optional": true
+        }
     }
 }

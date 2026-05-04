@@ -82,17 +82,16 @@ assert.equal(streamResponse.headers["content-type"], "text/event-stream; charset
 
 assert.deepEqual(
     registrations.map((registration) => registration.hookName),
-    ["before_prompt_build", "model_call_started", "model_call_ended", "after_tool_call"]
+    ["model_call_started", "model_call_ended", "after_tool_call"]
 );
 
 for (const registration of registrations) {
     assert.equal(registration.opts == null || registration.opts.priority === 0, true);
 }
 
-await registrations[0].handler({ context: { pluginConfig: { emitModelEvents: true, emitToolEvents: true } }, prompt: "must not leak prompt text" });
-await registrations[1].handler({ context: { pluginConfig: { emitModelEvents: true, emitToolEvents: true } }, provider: "anthropic", model: "claude-sonnet-4", prompt: "must not leak" });
-await registrations[2].handler({ context: { pluginConfig: { emitModelEvents: true, emitToolEvents: true } }, durationMs: 1234, outcome: "completed", usage: { completionTokens: 77 }, response: "must not leak" });
-await registrations[3].handler({ context: { pluginConfig: { emitModelEvents: true, emitToolEvents: true } }, toolName: "write_file", params: { path: "secret" }, result: "must not leak", durationMs: 50 });
+await registrations[0].handler({ context: { pluginConfig: { emitModelEvents: true, emitToolEvents: true } }, provider: "anthropic", model: "claude-sonnet-4", prompt: "must not leak", message: "must not leak message", input: "must not leak input", prompt_chars: 42, usage: { promptTokens: 11 } });
+await registrations[1].handler({ context: { pluginConfig: { emitModelEvents: true, emitToolEvents: true } }, durationMs: 1234, outcome: "completed", usage: { completionTokens: 77 }, response: "must not leak" });
+await registrations[2].handler({ context: { pluginConfig: { emitModelEvents: true, emitToolEvents: true } }, toolName: "write_file", params: { path: "secret" }, result: "must not leak", durationMs: 50 });
 
 streamResponse.end();
 
@@ -104,11 +103,14 @@ assert.equal(streamText.includes("response.started"), true);
 assert.equal(streamText.includes("response.completed"), true);
 assert.equal(streamText.includes("tool.used"), true);
 assert.equal(streamText.includes("file_write"), true);
+assert.equal(streamText.includes("prompt_chars"), true);
+assert.equal(streamText.includes("prompt_tokens"), true);
 assert.equal(streamText.includes("must not leak"), false);
+assert.equal(streamText.includes("must not leak message"), false);
+assert.equal(streamText.includes("must not leak input"), false);
 assert.equal(streamText.includes("secret"), false);
 assert.equal(streamText.includes("params"), false);
 assert.equal(streamText.includes("result"), false);
-assert.equal(streamText.includes("must not leak prompt text"), false);
 
 console.log("OpenClaw adapter contract assertions passed.");
 

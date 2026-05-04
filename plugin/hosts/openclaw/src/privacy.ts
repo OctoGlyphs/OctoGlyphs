@@ -30,14 +30,11 @@ export function shouldEmitToolEvents(config: OctoglyphsConfig | undefined): bool
 }
 
 export function createPromptSentEvent(event: UnknownRecord): OctoglyphsEvent {
-    const promptText = readPromptText(event);
-    const promptChars = promptText.length;
-
     return compactEvent({
         type: "prompt.sent",
         timestamp: Date.now(),
-        prompt_chars: promptChars > 0 ? promptChars : safeNonNegativeNumber(event.prompt_chars ?? event.promptChars),
-        prompt_tokens: safeNonNegativeNumber(event.prompt_tokens ?? event.promptTokens ?? readNestedNumber(event, ["usage", "prompt_tokens"]) ?? readNestedNumber(event, ["usage", "promptTokens"])) ?? estimateTokenCount(promptChars)
+        prompt_chars: safeNonNegativeNumber(event.prompt_chars ?? event.promptChars),
+        prompt_tokens: safeNonNegativeNumber(event.prompt_tokens ?? event.promptTokens ?? readNestedNumber(event, ["usage", "prompt_tokens"]) ?? readNestedNumber(event, ["usage", "promptTokens"]))
     });
 }
 
@@ -200,36 +197,6 @@ function categorizeToolName(name: string): string {
     }
 
     return "other";
-}
-
-function readPromptText(event: UnknownRecord): string {
-    const directPrompt = event.prompt;
-
-    if (typeof directPrompt === "string") {
-        return directPrompt;
-    }
-
-    const message = event.message;
-
-    if (typeof message === "string") {
-        return message;
-    }
-
-    const input = event.input;
-
-    if (typeof input === "string") {
-        return input;
-    }
-
-    return "";
-}
-
-function estimateTokenCount(charCount: number): number | undefined {
-    if (!Number.isFinite(charCount) || charCount <= 0) {
-        return undefined;
-    }
-
-    return Math.max(1, Math.ceil(charCount / 4));
 }
 
 function readRecord(value: unknown): UnknownRecord | undefined {
