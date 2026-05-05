@@ -6,12 +6,15 @@ This file is the chronological handoff record for OctoGlyphs. Read this first wh
 
 OctoGlyphs Phase 1 is implemented through all core systems plus the Isaac-style composable bullet flag system, named synergy set bonuses, starting-power rebalance, loadout/shop sorting quality-of-life, media support, readable shallow/deep hunt backgrounds, hardened endless-wave transitions, expanded enemy variety, boss patterns, difficulty events, explicit XP breakpoints, smarter upgrade draft logic, Step 9 boss reward choices, Step 10 real-data hunt recap, Step 11 enemy behavior variety, the sprite-shaped pickup glow pass, Step 12 mutation feel pass one, octo boss projectile patterns, the first Claude Code plugin flow, native Hermes support, shared OctoGlyphs branding, fixed-frame single-scaler layout for resizable plugin hosts, and a source-install `claude-octoglyphs` launcher for Claude Code. Every single trait in the catalog (30 bodies, 30 eyes, 92 hats, 14 clothes, 24 boosts, 10 legendaries, 4 halloween) now has unique `huntMods` that flip composable bullet flags. No item is "just +Luck 0.03x" anymore — every item changes how the hunt plays.
 
-### Latest: Fix Gems Invisible in Side-Panel Hosts
-- **Commit**: `6d7e434` — "Fix gems invisible in side-panel hosts (Claude Code, Hermes)"
-- **Root cause**: `document.visibilityState` reports `"hidden"` in webview side panels even when the user can see the tank. All gems routed through background ledger (invisible collection) instead of spawning visually.
-- **Fix**: `isBackgroundCollectMode()` now returns `false` when events arrived within last 30s. If the host is actively sending events, gems always spawn visually regardless of browser visibility API.
-- **Also fixed**: Hermes install instructions — `hermes plugins install .` doesn't work (expects Git URL). Correct flow is `cp -R` to `~/.hermes/plugins/octoglyphs` + `hermes plugins enable octoglyphs`.
-- **Next**: User verification on Linux (Claude Code + Hermes), then Mac (OpenClaw) via `git pull`.
+### Latest: All Three Hosts Verified Working
+- **Status**: OpenClaw (Mac), Claude Code (Linux), Hermes (Linux) — all confirmed functional.
+- **Gem visibility fix** (`6d7e434`): Side-panel webviews reported `document.visibilityState = "hidden"` even when visible. `isBackgroundCollectMode()` now bypasses background ledger when events arrived within 30s.
+- **Asset optimization** (`f2f7eb2`): MP3→OGG, PNG→WebP, deleted octosong 6+8. Package: 17.5MB (under 20MB ClawHub limit).
+- **Install flows verified**:
+  - OpenClaw: `npm run pack:local` → `openclaw plugins install .tgz --force` → `/octoglyphs`
+  - Claude Code: `npm install` → `npm link` → `claude-octoglyphs` (or `claude --plugin-dir .`)
+  - Hermes: `cp -R plugin/hosts/hermes ~/.hermes/plugins/octoglyphs` → `hermes plugins enable octoglyphs`
+- **Next**: Publish to ClawHub. Polish README install instructions for public users.
 
 ### Optimize Assets for ClawHub 20MB Limit
 - **Commit**: `f2f7eb2` — "Optimize assets for ClawHub 20MB limit: MP3→OGG, PNG→WebP, remove octosong 6+8"
