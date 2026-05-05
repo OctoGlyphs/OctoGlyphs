@@ -96,12 +96,7 @@ export function discoverAsset(save, assetId) {
     if (!save.discovered.includes(assetId)) save.discovered.push(assetId);
 }
 
-export function discoverAllShopAssets(save) {
-    if (!save.discovered) save.discovered = [];
-    for (const asset of SHOP_ASSETS) {
-        discoverAsset(save, asset.id);
-    }
-}
+
 
 export function unlockAsset(save, assetId) {
     discoverAsset(save, assetId);

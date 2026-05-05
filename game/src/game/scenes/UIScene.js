@@ -2,7 +2,7 @@ import { Scene } from "phaser";
 import { SHOP_ASSETS, SPECIAL_FORM_ASSETS, getAssetById } from "../data/assetCatalog.js";
 import { checkSynergies } from "../data/synergies.js";
 import { formatFinalStats, statDeltaParts } from "../data/statSystem.js";
-import { buyAsset, discoverAllShopAssets, equipAsset, equippedAssets, equippedStats, fusableTraits, fuseTraits, isUnlocked, loadSave, ownedAssetsForSlot, saveGame, statsWithAssetEquipped, unequipSlot, walletTotal } from "../state/saveStore.js";
+import { buyAsset, equipAsset, equippedAssets, equippedStats, fusableTraits, fuseTraits, isUnlocked, loadSave, ownedAssetsForSlot, saveGame, statsWithAssetEquipped, unequipSlot, walletTotal } from "../state/saveStore.js";
 import { triggerFTUE } from "../state/ftueManager.js";
 
 const SHOP_CATEGORIES = [
@@ -144,32 +144,7 @@ export class UIScene extends Scene {
             document.getElementById("evolve-panel")?.classList.remove("is-open");
         });
 
-        document.getElementById("reset-save-button")?.addEventListener("click", () => {
-            if (!confirm("Reset OctoGlyphs local save?")) return;
-            localStorage.removeItem("octoglyphs.save.v1");
-            localStorage.removeItem("primordial.save.v1");
-            this.save = loadSave();
-            this.renderShopControls();
-            this.renderShop();
-            this.renderInventory();
-            this.renderLoadout();
-            this.renderEvolution();
-            this.refreshStatsReadout();
-            this.game.events.emit("octoglyphs:save-changed");
-            this.setNotice("Local save reset.");
-        });
 
-        document.getElementById("discover-all-button")?.addEventListener("click", () => {
-            this.save = loadSave();
-            discoverAllShopAssets(this.save);
-            saveGame(this.save);
-            this.renderShop();
-            this.renderInventory();
-            this.renderLoadout();
-            this.renderEvolution();
-            this.game.events.emit("octoglyphs:save-changed");
-            this.setNotice("All shop traits discovered for testing.");
-        });
     }
 
     renderState(state) {
