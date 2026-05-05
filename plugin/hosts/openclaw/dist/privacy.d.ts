@@ -1,0 +1,31 @@
+type UnknownRecord = Record<string, unknown>;
+type OctoglyphsEvent = {
+    type: string;
+    timestamp: number;
+    [key: string]: string | number | boolean;
+};
+type OctoglyphsConfig = {
+    enabled?: boolean;
+    gameUrl?: string;
+    publicBaseUrl?: string;
+    emitModelEvents?: boolean;
+    emitToolEvents?: boolean;
+    debugSanitizedEvents?: boolean;
+};
+export declare function isEnabled(config: OctoglyphsConfig | undefined): boolean;
+export declare function shouldEmitModelEvents(config: OctoglyphsConfig | undefined): boolean;
+export declare function shouldEmitToolEvents(config: OctoglyphsConfig | undefined): boolean;
+export declare function createPromptSentEvent(event: UnknownRecord): OctoglyphsEvent;
+export declare function createModelStartedEvent(event: UnknownRecord): OctoglyphsEvent;
+export declare function createModelEndedEvent(event: UnknownRecord): OctoglyphsEvent;
+export declare function createAgentEndPromptSentEvent(_event: UnknownRecord): OctoglyphsEvent;
+export declare function createTurnStartedPromptSentEvent(_event: UnknownRecord): OctoglyphsEvent;
+export declare function createInboundMessagePromptSentEvent(_event: UnknownRecord): OctoglyphsEvent;
+export declare function createInboundMessageResponseFallbackEvent(_event: UnknownRecord): OctoglyphsEvent;
+export declare function createAgentEndModelEndedEvent(event: UnknownRecord): OctoglyphsEvent;
+export declare function createMessageSentModelEndedEvent(event: UnknownRecord): OctoglyphsEvent;
+export declare function createToolUsedEvent(event: UnknownRecord): OctoglyphsEvent;
+export declare function getCompanionGameUrl(config: OctoglyphsConfig | undefined): string;
+export declare function getPublicCompanionGameUrl(config: OctoglyphsConfig | undefined): string | undefined;
+export declare function getRunId(event: UnknownRecord): string | undefined;
+export {};

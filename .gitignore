@@ -1,8 +1,6 @@
 node_modules/
-dist/
 *.tgz
 .env
 .DS_Store
-plugin/hosts/openclaw/public/
 game/dist/
 __pycache__/
