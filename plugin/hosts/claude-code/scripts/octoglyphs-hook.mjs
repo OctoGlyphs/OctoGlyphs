@@ -37,12 +37,16 @@ function createOctoglyphsEvent(source) {
     }
 
     if (eventName === "UserPromptSubmit") {
-        const promptChars = typeof source.prompt === "string" ? source.prompt.length : 0;
+        // Privacy: do not read source.prompt content. Use only host-provided
+        // metadata (prompt_chars, prompt_tokens) if available, otherwise emit
+        // generic event with no size data.
+        const promptChars = safeInt(source?.prompt_chars) || safeInt(source?.metadata?.prompt_chars) || 0;
+        const promptTokens = safeInt(source?.prompt_tokens) || safeInt(source?.metadata?.prompt_tokens) || (promptChars > 0 ? estimateTokenCount(promptChars) : 0);
         return compactEvent({
             type: "prompt.sent",
             timestamp: Date.now(),
-            prompt_chars: promptChars,
-            prompt_tokens: estimateTokenCount(promptChars),
+            prompt_chars: promptChars || undefined,
+            prompt_tokens: promptTokens || undefined,
             host_kind: "claude_code"
         });
     }
@@ -51,7 +55,7 @@ function createOctoglyphsEvent(source) {
         const toolUseId = String(source?.tool_use_id ?? "");
         const durationMs = readToolDuration(toolUseId);
         const toolKind = categorizeToolName(String(source?.tool_name ?? "unknown"));
-        const eventType = maybeCommitEvent(source, toolKind) ?? "tool.used";
+        const eventType = maybeCommitEvent(toolKind, source?.tool_name) ?? "tool.used";
         return compactEvent({
             type: eventType,
             timestamp: Date.now(),
@@ -71,11 +75,14 @@ function createOctoglyphsEvent(source) {
     }
 
     if (eventName === "Stop") {
-        const completionChars = typeof source?.last_assistant_message === "string" ? source.last_assistant_message.length : undefined;
+        // Privacy: do not read source.last_assistant_message content. Use only
+        // host-provided metadata (completion_tokens, usage) if available.
+        const usage = typeof source?.usage === "object" ? source.usage : {};
+        const completionTokens = safeInt(usage?.completion_tokens) || safeInt(usage?.output_tokens) || safeInt(source?.completion_tokens) || 0;
         return compactEvent({
             type: "response.completed",
             timestamp: Date.now(),
-            completion_tokens: completionChars == null ? undefined : estimateTokenCount(completionChars),
+            completion_tokens: completionTokens || undefined,
             success: true,
             host_kind: "claude_code"
         });
@@ -160,30 +167,18 @@ async function postEvent(event, port) {
     }
 }
 
-function maybeCommitEvent(source, toolKind) {
-    if (toolKind !== "shell" && toolKind !== "git") {
+function maybeCommitEvent(toolKind, toolName) {
+    // Privacy: detect commit only from tool_name category, never from tool_input content.
+    if (toolKind !== "git") {
         return undefined;
     }
 
-    const command = readSafeCommand(source?.tool_input);
-    if (!command || /^\s*git\s+commit(?:\s|$)/.test(command) === false) {
-        return undefined;
+    const name = String(toolName ?? "").toLowerCase();
+    if (name.includes("commit")) {
+        return "commit.created";
     }
 
-    return "commit.created";
-}
-
-function readSafeCommand(toolInput) {
-    if (!toolInput || typeof toolInput !== "object") {
-        return undefined;
-    }
-
-    const command = toolInput.command;
-    if (typeof command !== "string") {
-        return undefined;
-    }
-
-    return command.length <= 120 ? command : undefined;
+    return undefined;
 }
 
 function readToolDuration(toolUseId) {
@@ -268,6 +263,11 @@ function estimateTokenCount(charCount) {
 function hashCategory(value) {
     const digest = createHash("sha256").update(value || "unknown").digest("hex").slice(0, 8);
     return `other_${digest}`;
+}
+
+function safeInt(value) {
+    const n = Number(value);
+    return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0;
 }
 
 async function readStdinJson() {

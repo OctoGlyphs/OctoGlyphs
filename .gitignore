@@ -5,3 +5,4 @@ dist/
 .DS_Store
 plugin/hosts/openclaw/public/
 game/dist/
+__pycache__/

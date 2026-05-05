@@ -1,7 +1,8 @@
 """OctoGlyphs Hermes plugin.
 
-Privacy boundary: this plugin sends metadata only. It never sends raw prompts,
-assistant responses, file contents, tool arguments, terminal output, or secrets.
+Privacy boundary: this plugin sends metadata only. It never reads or inspects
+raw prompts, assistant responses, file contents, tool arguments, tool results,
+terminal output, or secrets. Size estimates use only host-provided metadata.
 """
 
 from __future__ import annotations
@@ -86,18 +87,23 @@ def pre_llm_call(
     is_first_turn: bool = False,
     model: str = "",
     platform: str = "",
-    **_: Any,
+    **kwargs: Any,
 ) -> None:
     port = _ensure_sidecar()
     now = _now_ms()
     _LAST_LLM_STARTS[_safe_session_id(session_id)] = now
-    prompt_chars = len(user_message) if isinstance(user_message, str) else 0
+    # Privacy: do not read user_message content. Use only host-provided
+    # metadata (prompt_chars, prompt_tokens) if available.
+    prompt_chars = _safe_int(kwargs.get("prompt_chars") or kwargs.get("metadata", {}).get("prompt_chars"), 0)
+    prompt_tokens = _safe_int(kwargs.get("prompt_tokens") or kwargs.get("metadata", {}).get("prompt_tokens"), 0)
+    if prompt_tokens == 0 and prompt_chars > 0:
+        prompt_tokens = _estimate_tokens(prompt_chars)
     _emit(
         {
             "type": "prompt.sent",
             "timestamp": now,
-            "prompt_chars": prompt_chars,
-            "prompt_tokens": _estimate_tokens(prompt_chars),
+            "prompt_chars": prompt_chars if prompt_chars > 0 else None,
+            "prompt_tokens": prompt_tokens if prompt_tokens > 0 else None,
         },
         port,
     )
@@ -112,16 +118,25 @@ def post_tool_call(
     task_id: str = "",
     session_id: str = "",
     tool_call_id: str = "",
+    success: Any = None,
+    error: Any = None,
     **_: Any,
 ) -> None:
     event_type = "commit.created" if _is_git_commit_tool(tool_name) else "tool.used"
+    # Privacy: do not read args or result content. Determine success from
+    # host-provided success/error fields only.
+    tool_success = True
+    if success is not None:
+        tool_success = bool(success)
+    elif error is not None:
+        tool_success = False
     _emit(
         {
             "type": event_type,
             "timestamp": _now_ms(),
             "tool_kind": _categorize_tool(tool_name),
             "duration_ms": 0,
-            "success": not _looks_failed(result),
+            "success": tool_success,
         }
     )
 
@@ -132,15 +147,14 @@ def post_llm_call(session_id: str = "", model: str = "", platform: str = "", **k
     duration_ms = max(0, _now_ms() - started_at) if started_at else 0
     usage = kwargs.get("usage") if isinstance(kwargs.get("usage"), dict) else {}
     completion_tokens = _safe_int(usage.get("output_tokens") or usage.get("completion_tokens"), 0)
-    assistant_chars = _safe_int(kwargs.get("assistant_content_chars"), 0)
-    if completion_tokens == 0 and assistant_chars:
-        completion_tokens = _estimate_tokens(assistant_chars)
+    # Privacy: do not read assistant_content_chars from raw response length.
+    # Use only token counts from usage metadata.
     _emit(
         {
             "type": "response.completed",
             "timestamp": _now_ms(),
             "duration_ms": duration_ms,
-            "completion_tokens": completion_tokens,
+            "completion_tokens": completion_tokens if completion_tokens > 0 else None,
             "tool_call_count": _safe_int(kwargs.get("assistant_tool_call_count"), 0),
         }
     )
@@ -211,6 +225,8 @@ def _sanitize_event(event: Any) -> Optional[Dict[str, Any]]:
         if key in ("type", "timestamp") or key not in event:
             continue
         value = event.get(key)
+        if value is None:
+            continue
         if key == "tool_kind":
             clean[key] = _categorize_tool(str(value))
         elif key == "success":
@@ -322,13 +338,6 @@ def _categorize_tool(name: str) -> str:
 def _is_git_commit_tool(tool_name: str) -> bool:
     text = str(tool_name or "").lower()
     return "git" in text and "commit" in text
-
-
-def _looks_failed(result: Any) -> bool:
-    if result is None:
-        return False
-    text = str(result).lower()[:1000]
-    return "\"error\"" in text or "error:" in text or "failed" in text
 
 
 def _estimate_tokens(char_count: int) -> int:
