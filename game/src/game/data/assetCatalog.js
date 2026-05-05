@@ -353,8 +353,8 @@ export function preloadCatalog(scene) {
         scene.load.image(asset.key, asset.framePath || asset.path);
     }
 
-    scene.load.image("tank-bg", "./assets/raw/Backgrounds/shallow1.png");
-    scene.load.image("ocean-bg", "./assets/raw/Backgrounds/deep1.png");
+    scene.load.image("tank-bg", "./assets/raw/Backgrounds/shallow1.webp");
+    scene.load.image("ocean-bg", "./assets/raw/Backgrounds/deep1.webp");
     const tankEnemyAssets = [
         { key: "tank-enemy-jelly", frames: 4, framePath: "./assets/generated/tank-enemies/tank-enemy-jelly/frame_00.png" },
         { key: "tank-enemy-eel", frames: 12, framePath: "./assets/generated/tank-enemies/tank-enemy-eel/frame_00.png" },
