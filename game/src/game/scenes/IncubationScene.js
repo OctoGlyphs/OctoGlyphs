@@ -535,6 +535,7 @@ export class IncubationScene extends Scene {
         this.isPageHidden = typeof document !== "undefined" && document.visibilityState === "hidden";
         this.isWindowFocused = typeof document === "undefined" || typeof document.hasFocus !== "function" || document.hasFocus();
         this.visibilityPauseStartedAt = 0;
+        this.lastEventReceivedAt = 0;
     }
 
     create() {
@@ -895,6 +896,7 @@ export class IncubationScene extends Scene {
 
     onOctoGlyphsEvent(event) {
         if (!event?.type) return;
+        this.lastEventReceivedAt = this.time?.now || Date.now();
 
         if (event.type === "prompt.sent") {
             this.onPromptSent(event);
@@ -1236,7 +1238,9 @@ export class IncubationScene extends Scene {
     }
 
     isBackgroundCollectMode() {
-        return this.isPageHidden && !this.tankHuntActive;
+        if (this.tankHuntActive) return false;
+        if (this.lastEventReceivedAt && (this.time?.now || Date.now()) - this.lastEventReceivedAt < 30000) return false;
+        return this.isPageHidden;
     }
 
     startTankHunt() {
