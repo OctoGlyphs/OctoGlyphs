@@ -1,5 +1,24 @@
 # OctoGlyphs Devlog
 
+## 2026-05-06 — Working Publishing-Ready State Checkpoint
+
+**What**: Checkpointed the current OpenClaw plugin bundle after fresh-machine testing confirmed the game is in a working state ready for publishing once the ClawHub account age gate expires.
+
+**Changes**:
+- Added the currently generated OpenClaw public raw asset bundle that was present but not yet tracked by Git.
+- Preserved the compressed release asset state, including WebP backgrounds and OGG music, so the publishable package stays under the ClawHub size limit.
+- Marked this as the post-working-state publishing checkpoint before gameplay brainstorming or further improvement work.
+
+**Why**: The game has been verified to load correctly from a clean OpenClaw install after the `0.1.1` package rebuild. ClawHub publishing is blocked only by the GitHub account age gate, so the repo needs a clean checkpoint representing the known-good publishing-ready state.
+
+**Verification**:
+- `npm test` passes in `game`.
+- `npm run typecheck && npm run build:plugin && node tests/openclawAdapter.test.mjs` passes in `plugin/hosts/openclaw`.
+
+**What's next**: Wait for the ClawHub age gate to expire or publish via an older eligible GitHub account. While waiting, review non-breaking gameplay improvements, especially Isaac-style synergy depth and hunt variety.
+
+---
+
 This file is the chronological handoff record for OctoGlyphs. Read this first when resuming work, then read `PHASE1-BUILD-SPEC.md`, then check `git log --oneline -- PrimordialAI`.
 
 ## Current Resume Point
