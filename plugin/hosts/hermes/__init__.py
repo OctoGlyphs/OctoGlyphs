@@ -71,6 +71,7 @@ def register(ctx: Any) -> None:
 
 
 def on_session_start(session_id: str = "", model: str = "", platform: str = "", **_: Any) -> None:
+    print("[OctoGlyphs] on_session_start fired")
     port = _ensure_sidecar()
     now = _now_ms()
     _SESSION_STARTS[_safe_session_id(session_id)] = now
@@ -89,6 +90,7 @@ def pre_llm_call(
     platform: str = "",
     **kwargs: Any,
 ) -> None:
+    print("[OctoGlyphs] pre_llm_call fired")
     port = _ensure_sidecar()
     now = _now_ms()
     _LAST_LLM_STARTS[_safe_session_id(session_id)] = now
@@ -142,6 +144,7 @@ def post_tool_call(
 
 
 def post_llm_call(session_id: str = "", model: str = "", platform: str = "", **kwargs: Any) -> None:
+    print("[OctoGlyphs] post_llm_call fired")
     sid = _safe_session_id(session_id)
     started_at = _LAST_LLM_STARTS.pop(sid, None)
     duration_ms = max(0, _now_ms() - started_at) if started_at else 0

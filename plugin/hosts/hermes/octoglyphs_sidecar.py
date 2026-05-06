@@ -101,7 +101,13 @@ class OctoGlyphsHandler(BaseHTTPRequestHandler):
         client.write(": octoglyphs stream connected\n\n")
         try:
             while not client.closed:
-                chunk = client.messages.get(timeout=30)
+                try:
+                    chunk = client.messages.get(timeout=25)
+                except queue.Empty:
+                    # Send SSE keepalive comment to prevent timeout disconnect
+                    self.wfile.write(b": keepalive\n\n")
+                    self.wfile.flush()
+                    continue
                 if not chunk:
                     break
                 self.wfile.write(chunk.encode("utf-8"))

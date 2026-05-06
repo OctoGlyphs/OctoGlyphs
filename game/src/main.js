@@ -32,7 +32,7 @@ window.addEventListener("resize", updateAppScale);
 
 await loadPixelFont();
 
-const game = new Phaser.Game({
+const game = window.__OCTOGLYPHS_GAME = new Phaser.Game({
     type: Phaser.AUTO,
     parent: "game-root",
     width: VIRTUAL_APP_WIDTH,
@@ -40,6 +40,8 @@ const game = new Phaser.Game({
     backgroundColor: "#061827",
     pixelArt: true,
     roundPixels: true,
+    autoFocus: false,
+    pauseOnBlur: false,
     physics: {
         default: "arcade",
         arcade: {

@@ -49,6 +49,10 @@ const TANK_NORMAL_GEM_DROP_CHANCE = 15;
 const TANK_ELITE_GEM_DROP_CHANCE = 62;
 const TANK_SMALL_GEM_LIFETIME = 26000;
 const TANK_BETTER_GEM_LIFETIME = 42000;
+const GEM_COLLECTION_GRACE_MS = 2600;
+const GEM_SPAWN_REVEAL_MS = 2400;
+const GEM_SPAWN_MIN_ALPHA = 0.72;
+const GEM_PRIMITIVE_DEPTH = 34;
 
 // --- Wave Recipe System ---
 // Each recipe defines enemy composition, spawn count modifier, speed modifier, and spawn interval modifier.
@@ -581,7 +585,7 @@ export class IncubationScene extends Scene {
         this.input.on("pointerout", () => this.releaseManualControl());
         this.keys = this.input.keyboard?.addKeys("W,A,S,D,UP,DOWN,LEFT,RIGHT,SPACE");
 
-        this.physics.add.overlap(this.octo, this.gems, (_, gem) => this.collectGem(gem), (_, gem) => this.canOverlapToroidal(this.octo, gem, 38));
+        this.physics.add.overlap(this.octo, this.gems, (_, gem) => this.collectGem(gem), (_, gem) => this.canCollectGem(gem));
         this.physics.add.overlap(this.octo, this.traits, (_, trait) => this.collectTrait(trait), (_, trait) => this.canOverlapToroidal(this.octo, trait, 52));
         this.physics.add.overlap(this.bullets, this.enemies, (bullet, enemy) => this.hitEnemy(bullet, enemy), (bullet, enemy) => this.canOverlapToroidal(bullet, enemy, (enemy.getData("boss") ? 62 : 42)));
         this.physics.add.overlap(this.playerMines, this.enemies, (mine, enemy) => this.triggerPlayerMine(mine, enemy), (mine, enemy) => !mine.getData("armed") && this.canOverlapToroidal(mine, enemy, (enemy.getData("boss") ? 76 : 54)));
@@ -1034,38 +1038,28 @@ export class IncubationScene extends Scene {
         const safeCount = Math.max(0, Math.floor(count || 0));
         if (safeCount <= 0) return;
 
-        this.reconcileBackgroundGemLedger();
-
-        const now = this.getBackgroundLedgerNow();
         const gemDef = GEM_TYPES[type] || GEM_TYPES.green;
         const gemType = GEM_TYPES[type] ? type : "green";
         const value = Math.max(1, Math.round((gemDef.value || 1) * this.stats.gemValue));
-        const speed = this.getBackgroundCollectSpeed();
         let virtualOcto = this.backgroundLedgerOcto || { x: this.octo?.x || this.worldWidth / 2, y: this.octo?.y || this.worldHeight / 2 };
-        let availableAt = Math.max(now, this.backgroundLedgerAvailableAt || now);
 
         for (let i = 0; i < safeCount; i += 1) {
             const position = this.pickGemSpawnPosition();
-            const distance = this.toroidalDistance(virtualOcto.x, virtualOcto.y, position.x, position.y);
-            const travelMs = PhaserMath.Clamp(Math.round(distance / Math.max(1, speed) * 1000) + 360, 900, 11000);
-            const collectAt = availableAt + travelMs;
             const ledgerGem = {
-                id: `${now}-${this.backgroundGemLedger.length}-${i}`,
+                id: `${Date.now()}-${this.backgroundGemLedger.length}-${i}`,
                 type: gemType,
                 value,
                 x: this.wrapValue(position.x, this.worldWidth),
                 y: this.wrapValue(position.y, this.worldHeight),
-                spawnedAt: now,
-                collectAt
+                spawnedAt: this.getBackgroundLedgerNow()
             };
 
             this.backgroundGemLedger.push(ledgerGem);
             virtualOcto = { x: ledgerGem.x, y: ledgerGem.y };
-            availableAt = collectAt;
         }
 
         this.backgroundLedgerOcto = virtualOcto;
-        this.backgroundLedgerAvailableAt = availableAt;
+        this.backgroundLedgerAvailableAt = 0;
     }
 
     reconcileBackgroundGemLedger() {
@@ -1107,7 +1101,6 @@ export class IncubationScene extends Scene {
     }
 
     materializeBackgroundGemLedger() {
-        this.reconcileBackgroundGemLedger();
         if (!this.backgroundGemLedger?.length) return 0;
 
         const remaining = this.backgroundGemLedger;
@@ -1123,21 +1116,15 @@ export class IncubationScene extends Scene {
     }
 
     flushBackgroundCollectedGems() {
-        this.reconcileBackgroundGemLedger();
         const materialized = this.materializeBackgroundGemLedger();
         if (!this.backgroundCollectedGems && !materialized) return;
 
-        const gemCount = this.backgroundCollectedGems;
-        const gemValue = this.backgroundCollectedValue;
         this.backgroundCollectedGems = 0;
         this.backgroundCollectedValue = 0;
         this.backgroundCollectedByType = {};
 
-        if (gemCount > 0) {
-            this.showCenterTraitText(`Collected ${gemValue} gem value while away`);
-            this.game.events.emit("octoglyphs:notice", `Octo collected ${gemCount} activity gem${gemCount === 1 ? "" : "s"} while you worked.${materialized ? ` ${materialized} still in tank.` : ""}`);
-        } else if (materialized > 0) {
-            this.game.events.emit("octoglyphs:notice", `${materialized} activity gem${materialized === 1 ? "" : "s"} are still waiting in the tank.`);
+        if (materialized > 0) {
+            this.game.events.emit("octoglyphs:notice", `${materialized} activity gem${materialized === 1 ? "" : "s"} are waiting in the tank.`);
         }
         this.emitState();
     }
@@ -1158,6 +1145,9 @@ export class IncubationScene extends Scene {
     }
 
     pickGemSpawnPosition() {
+        const camera = this.cameras.main;
+        const view = camera.worldView;
+
         if (!this.octo?.active) {
             return {
                 x: PhaserMath.Between(90, this.worldWidth - 90),
@@ -1165,17 +1155,15 @@ export class IncubationScene extends Scene {
             };
         }
 
-        const camera = this.cameras.main;
-        const view = camera.worldView;
         const visiblePadding = 70;
 
         if (!this.tankHuntActive) {
-            const distance = PhaserMath.FloatBetween(Math.min(view.width, view.height) * 0.55, Math.min(view.width, view.height) * 0.85);
-            const angle = PhaserMath.FloatBetween(0, Math.PI * 2);
-            return {
-                x: this.octo.x + Math.cos(angle) * distance,
-                y: this.octo.y + Math.sin(angle) * distance
-            };
+            /* Spawn gems INSIDE the camera viewport so they're always visible.
+               Use a margin inset so gems don't appear right at the edge. */
+            const margin = 80;
+            const rawX = PhaserMath.Between(view.x + margin, view.right - margin);
+            const rawY = PhaserMath.Between(view.y + margin, view.bottom - margin);
+            return { x: rawX, y: rawY };
         }
 
         return {
@@ -1239,7 +1227,6 @@ export class IncubationScene extends Scene {
 
     isBackgroundCollectMode() {
         if (this.tankHuntActive) return false;
-        if (this.lastEventReceivedAt && (this.time?.now || Date.now()) - this.lastEventReceivedAt < 30000) return false;
         return this.isPageHidden;
     }
 
@@ -3667,15 +3654,25 @@ export class IncubationScene extends Scene {
 
     spawnGemAt(x, y, type = "green", options = {}) {
         const gemDef = GEM_TYPES[type] || GEM_TYPES.green;
-        const position = this.tankHuntActive ? { x, y } : { x: this.wrapValue(x, this.worldWidth), y: this.wrapValue(y, this.worldHeight) };
+        /* Do NOT wrapValue here — pickGemSpawnPosition returns camera-relative coords
+           which may exceed 0..worldWidth when camera views across the toroidal seam.
+           Wrapping them undoes the camera-viewport placement and makes gems invisible. */
+        const position = { x, y };
         const gem = this.gems.create(position.x, position.y, `${gemDef.key}-0`);
+        if (!gem) { console.warn("[GEM] gems.create returned null/undefined at", position.x, position.y); return; }
+        const collectionGraceMs = options.collectionGraceMs ?? GEM_COLLECTION_GRACE_MS;
+        const revealMs = Math.min(GEM_SPAWN_REVEAL_MS, collectionGraceMs);
         gem.setData("gemType", type);
         gem.setData("value", options.value || gemDef.value);
         gem.setData("frame", PhaserMath.Between(0, gemDef.frames - 1));
+        gem.setData("spawnedAt", this.time.now);
+        gem.setData("collectibleAt", this.time.now + collectionGraceMs);
         gem.setScale(type === "silver" ? 0.86 : 0.96);
-        gem.setDepth(19);
-        this.improveGameplayReadability(gem, { outlineAlpha: 0.42, haloColor: gemDef.tint || 0xffffff, haloAlpha: 0.58, haloBlur: 12 });
-        this.addGemGlowVisuals(gem, gemDef, type);
+        gem.setDepth(20);
+        /* Gem sprite is the primary visual — just add a soft glow circle behind it */
+        gem.setAlpha(1);
+        gem.clearTint();
+        this.addGemGlowOnly(gem, gemDef, type, revealMs);
         gem.body.setCircle(14, 7, 7);
         if (options.lifetime > 0) {
             gem.setData("expiresAt", this.time.now + options.lifetime);
@@ -3688,6 +3685,169 @@ export class IncubationScene extends Scene {
                 if (gem.active) this.destroyGem(gem);
             });
         }
+    }
+
+    addGemPrimitiveVisuals(gem, gemDef, type, revealMs) {
+        const color = gemDef.tint || 0xffffff;
+        const rareScale = type === "silver" ? 1.45 : (type === "pink" ? 1.28 : (type === "yellow" ? 1.16 : (type === "blue" ? 1.08 : 1)));
+        const seed = PhaserMath.Between(0, 9999);
+
+        /* Soft outer aura (pulsing ellipse) */
+        const aura = this.add.ellipse(gem.x, gem.y, 52 * rareScale, 40 * rareScale, color, 0.12).setDepth(GEM_PRIMITIVE_DEPTH - 0.2);
+        aura.setBlendMode(BlendModes.ADD);
+
+        /* Main gem body — faceted star shape */
+        const core = this.add.star(gem.x, gem.y, 6, 8 * rareScale, 18 * rareScale, color, 0.92).setDepth(GEM_PRIMITIVE_DEPTH + 0.4);
+        core.setStrokeStyle(2.5, 0xffffff, 0.85);
+
+        /* Inner highlight for depth */
+        const inner = this.add.star(gem.x, gem.y, 6, 4 * rareScale, 10 * rareScale, 0xffffff, 0.6).setDepth(GEM_PRIMITIVE_DEPTH + 0.5);
+
+        /* Outer ring glow */
+        const ring = this.add.circle(gem.x, gem.y, 22 * rareScale, 0x000000, 0).setDepth(GEM_PRIMITIVE_DEPTH + 0.1);
+        ring.setStrokeStyle(2.5, color, 0.65);
+
+        /* Spawn reveal pulse */
+        const reveal = this.add.circle(gem.x, gem.y, 38 * rareScale, color, 0.2).setDepth(GEM_PRIMITIVE_DEPTH - 0.1);
+        reveal.setStrokeStyle(2, 0xffffff, 0.7);
+
+        const visuals = [aura, ring, core, inner, reveal];
+
+        /* Mark all as primitives for position sync */
+        visuals.forEach(v => v.setData("gemPrimitive", true));
+        gem.setData("glowVisuals", visuals);
+
+        /* Sparkles — small rotating stars around the gem */
+        const sparkleCount = type === "silver" ? 4 : (type === "pink" || type === "yellow" ? 3 : (type === "blue" ? 2 : 1));
+        for (let i = 0; i < sparkleCount; i += 1) {
+            const angle = (Math.PI * 2 / sparkleCount) * i + PhaserMath.FloatBetween(-0.8, 0.8);
+            const rx = PhaserMath.FloatBetween(16, 28) * rareScale;
+            const ry = PhaserMath.FloatBetween(12, 22) * rareScale;
+            const sparkle = this.add.star(gem.x + Math.cos(angle) * rx, gem.y + Math.sin(angle) * ry, 4, 1.2, 3.2, 0xffffff, 0.0).setDepth(GEM_PRIMITIVE_DEPTH + 0.6);
+            sparkle.setBlendMode(BlendModes.ADD);
+            sparkle.setData("gemPrimitive", true);
+            sparkle.setData("offsetX", Math.cos(angle) * rx);
+            sparkle.setData("offsetY", Math.sin(angle) * ry);
+            visuals.push(sparkle);
+            this.tweens.add({
+                targets: sparkle,
+                alpha: { from: 0.0, to: PhaserMath.FloatBetween(0.5, 0.85) },
+                scale: { from: 0.3, to: PhaserMath.FloatBetween(0.85, 1.3) },
+                angle: 180,
+                duration: PhaserMath.Between(450, 900),
+                delay: PhaserMath.Between(0, 1200),
+                hold: PhaserMath.Between(80, 200),
+                repeatDelay: PhaserMath.Between(300, 1200),
+                yoyo: true,
+                repeat: -1,
+                ease: "Sine.easeInOut"
+            });
+        }
+
+        /* Core breathing animation */
+        this.tweens.add({
+            targets: [core, inner],
+            scale: { from: 0.88, to: 1.14 },
+            duration: 620 + (seed % 200),
+            yoyo: true,
+            repeat: -1,
+            ease: "Sine.easeInOut"
+        });
+
+        /* Aura pulse */
+        this.tweens.add({
+            targets: aura,
+            alpha: { from: 0.06, to: 0.2 },
+            scaleX: { from: 0.85, to: 1.2 },
+            scaleY: { from: 0.8, to: 1.1 },
+            duration: 900 + (seed % 300),
+            yoyo: true,
+            repeat: -1,
+            ease: "Sine.easeInOut"
+        });
+
+        /* Ring pulse */
+        this.tweens.add({
+            targets: ring,
+            scale: { from: 0.9, to: 1.18 },
+            alpha: { from: 0.5, to: 0.85 },
+            duration: 700 + (seed % 250),
+            delay: 200,
+            yoyo: true,
+            repeat: -1,
+            ease: "Sine.easeInOut"
+        });
+
+        /* Reveal fade out */
+        this.tweens.add({
+            targets: reveal,
+            alpha: { from: 0.28, to: 0.0 },
+            scale: { from: 0.6, to: 1.6 },
+            duration: Math.max(700, revealMs),
+            ease: "Sine.easeOut",
+            onComplete: () => { if (reveal.active) reveal.setVisible(false); }
+        });
+    }
+
+    addGemGlowOnly(gem, gemDef, type, revealMs) {
+        const color = gemDef.tint || 0xffffff;
+        const rareScale = type === "silver" ? 1.45 : (type === "pink" ? 1.28 : (type === "yellow" ? 1.16 : (type === "blue" ? 1.08 : 1)));
+
+        /* Soft glow circle BEHIND the gem sprite */
+        const glow = this.add.circle(gem.x, gem.y, 24 * rareScale, color, 0.18).setDepth(gem.depth - 0.5);
+        glow.setBlendMode(BlendModes.ADD);
+        glow.setData("gemPrimitive", true);
+
+        /* Subtle pulse */
+        this.tweens.add({
+            targets: glow,
+            alpha: { from: 0.12, to: 0.3 },
+            scale: { from: 0.9, to: 1.2 },
+            duration: 800 + PhaserMath.Between(0, 300),
+            yoyo: true,
+            repeat: -1,
+            ease: "Sine.easeInOut"
+        });
+
+        /* Spawn reveal ring that fades away */
+        const reveal = this.add.circle(gem.x, gem.y, 36 * rareScale, color, 0.22).setDepth(gem.depth - 0.6);
+        reveal.setStrokeStyle(2, 0xffffff, 0.6);
+        reveal.setData("gemPrimitive", true);
+        this.tweens.add({
+            targets: reveal,
+            alpha: 0,
+            scale: 1.8,
+            duration: Math.max(600, revealMs),
+            ease: "Sine.easeOut",
+            onComplete: () => { if (reveal.active) reveal.destroy(); }
+        });
+
+        gem.setData("glowVisuals", [glow, reveal]);
+    }
+
+    addGemSpawnReveal(gem, gemDef, revealMs) {
+        const color = gemDef.tint || 0xffffff;
+        const reveal = this.add.circle(gem.x, gem.y, 34, color, 0.28).setDepth(19.4);
+        reveal.setStrokeStyle(3, 0xffffff, 0.72);
+        reveal.setData("gemReveal", true);
+        const visuals = gem.getData("glowVisuals") || [];
+        gem.setData("glowVisuals", [...visuals, reveal]);
+        this.tweens.add({
+            targets: reveal,
+            alpha: { from: 0.34, to: 0.08 },
+            scale: { from: 0.64, to: 1.42 },
+            duration: 520,
+            yoyo: true,
+            repeat: Math.max(1, Math.ceil(revealMs / 1040)),
+            ease: "Sine.easeInOut"
+        });
+        this.tweens.add({
+            targets: gem,
+            alpha: { from: GEM_SPAWN_MIN_ALPHA, to: 1 },
+            scale: { from: gem.scaleX * 1.18, to: gem.scaleX },
+            duration: Math.max(220, revealMs),
+            ease: "Sine.easeOut"
+        });
     }
 
     addGemGlowVisuals(gem, gemDef, type) {
@@ -3750,7 +3910,7 @@ export class IncubationScene extends Scene {
             const angle = (Math.PI * 2 / sparkleCount) * i + PhaserMath.FloatBetween(-0.9, 0.9);
             const radiusX = PhaserMath.FloatBetween(17, 30) * rareScale;
             const radiusY = PhaserMath.FloatBetween(12, 23) * rareScale;
-            const sparkle = this.add.star(gem.x + Math.cos(angle) * radiusX, gem.y + Math.sin(angle) * radiusY, 4, 1.1, type === "green" ? 2.8 : 3.8, 0xffffff, 0.0).setDepth(20.5);
+            const sparkle = this.add.star(gem.x + Math.cos(angle) * radiusX, gem.y + Math.sin(angle) * radiusY, 4, 1.1, type === "green" ? 2.8 : 3.8, 0xffffff, 0.0).setDepth(19.5);
             sparkle.setBlendMode(BlendModes.ADD);
             sparkle.setData("offsetX", Math.cos(angle) * radiusX);
             sparkle.setData("offsetY", Math.sin(angle) * radiusY);
@@ -4116,6 +4276,7 @@ export class IncubationScene extends Scene {
 
     animateGems() {
         for (const gem of this.gems.getChildren()) {
+            if (!gem?.active) continue;
             const gemDef = GEM_TYPES[gem.getData("gemType") || "green"] || GEM_TYPES.green;
             const frame = ((gem.getData("frame") || 0) + 1) % gemDef.frames;
             gem.setData("frame", frame);
@@ -4276,7 +4437,7 @@ export class IncubationScene extends Scene {
             }
 
             const collectDistance = item.getData("isTrait") ? 60 : 46;
-            if (distance <= collectDistance) {
+            if (distance <= collectDistance && this.canCollectMagnetItem(item)) {
                 if (item.getData("isTrait")) {
                     item.setData("collecting", true);
                     item.body.setVelocity(0, 0);
@@ -4288,15 +4449,35 @@ export class IncubationScene extends Scene {
                 continue;
             }
 
+            /* Inside collect distance but grace period active — park the gem, don't orbit */
+            if (distance <= collectDistance) {
+                item.body.setVelocity(0, 0);
+                item.setData("collecting", false);
+                continue;
+            }
+
             item.setData("collecting", false);
             const pull = PhaserMath.Clamp(1 - distance / radius, 0.25, 1);
             this.moveBodyTowardToroidal(item, this.octo, speed * pull);
         }
     }
 
+    canCollectGem(gem) {
+        if (!gem?.active) return false;
+        if (this.time.now < (gem.getData("collectibleAt") || 0)) return false;
+        return this.canOverlapToroidal(this.octo, gem, 38);
+    }
+
+    canCollectMagnetItem(item) {
+        if (!item?.active) return false;
+        if (!item.getData("isTrait") && this.time.now < (item.getData("collectibleAt") || 0)) return false;
+        return true;
+    }
+
     collectGem(gem) {
         const type = gem.getData("gemType") || "green";
         const value = Math.max(1, Math.round((gem.getData("value") || 1) * this.stats.gemValue));
+        const livedMs = (this.time.now - (gem.getData("spawnedAt") || this.time.now));
         addGemValue(this.save, type, value);
         const gemX = gem.x;
         const gemY = gem.y;
