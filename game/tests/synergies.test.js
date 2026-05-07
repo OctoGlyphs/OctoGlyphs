@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { checkSynergies, aggregateSynergyHuntMods, aggregateSynergyStatMods } from "../src/game/data/synergies.js";
+import { checkSynergies, aggregateSynergyHuntMods, aggregateSynergyStatMods, getActiveTraitInteractions, getEquippedHuntFlagCounts } from "../src/game/data/synergies.js";
 
 {
     const { active, partial } = checkSynergies(["hat-pirate-hat", "clothes-pirate-outfit", "eyes-eye-patch"]);
@@ -37,6 +37,16 @@ import { checkSynergies, aggregateSynergyHuntMods, aggregateSynergyStatMods } fr
     assert.equal(huntMods.bounce >= 1, true);
     assert.equal(huntMods.split >= 1, true);
     assert.equal(huntMods.wiggle >= 1, true);
+}
+
+{
+    const counts = getEquippedHuntFlagCounts(["body-acid", "eyes-sad", "boost-bubble-gum"]);
+    assert.equal(counts.poison >= 1, true);
+    assert.equal(counts.homing >= 1, true);
+    assert.equal(counts.bounce >= 1, true);
+    const interactions = getActiveTraitInteractions(counts).map(interaction => interaction.id);
+    assert.equal(interactions.includes("venom-lock"), true);
+    assert.equal(interactions.includes("toxic-ricochet"), true);
 }
 
 console.log("synergies tests passed");

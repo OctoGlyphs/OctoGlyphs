@@ -1,6 +1,6 @@
 # Game Design Document: OctoGlyphs
 ### Complete GDD — Merged from Part 1 + Part 2
-### Last Updated: 2026-04-26
+### Last Updated: 2026-05-07
 
 ---
 
@@ -98,6 +98,36 @@ During a hunt, the player earns mutations on level-up. Mutations are temporary (
 Pierce, split, bounce, homing, poison, orbit, fire rate, damage, projectile count, projectile size, bullet speed, magnet range, swim speed, armor, and more.
 
 All mutations have distinct tint colors so the player can visually see their build. Modifiers stack — homing + wiggle creates seeking sine-wave bullets, pierce + freeze creates a slow-field shotgun, boomerang + split creates returning shrapnel arcs.
+
+#### 3.3.2.1 Current Trait Interaction Model
+The implementation now uses three layers of loadout interaction:
+
+1. **Exact outfit synergies** — named three-item recipes such as Pirate King, Full Metal, Tech Lord, Mad Science, Crypto Whale, Fortune Teller, and Shadow Assassin.
+2. **Emergent theme synergies** — stacked hunt flags activate broad run identities such as Venom Brewer, Smart Shot, Reef Fortress, Gem Resonance, Ghost Current, Chaos Ink, and Broadside Battery.
+3. **Pairwise/triple trait interactions** — individual flags collide to mutate bullet rules, so two loadouts in the same theme can still feel different.
+
+Current pairwise/triple interactions:
+
+| Interaction | Required Flags | Gameplay Effect |
+|-------------|----------------|-----------------|
+| Toxic Ricochet | Poison + Bounce | Poison shots leave venom puddles on bounce |
+| Venom Lock-On | Poison + Homing | Guided shots prefer poisoned targets |
+| Spore Split | Poison + Split | Toxic hits spawn smaller poison spores |
+| Plague Chain | Poison + Contagion | Poison kills spread wider and harder |
+| Frost Lance | Freeze + Pierce | Piercing frost bullets leave slowing wake pulses |
+| Ice Ring | Freeze + Orbit | Orbiters chill enemies they touch |
+| Haunted Return | Fear + Boomerang | Returning ghost shots pressure fleeing enemies |
+| Smart Chain | Homing + Chain | Chain jumps hit more targets with better damage retention |
+| Seeker Prism | Homing + Prism Fork | Prism fork shards gain independent seeking |
+| Coal Cannon | Broadside + Lump of Coal | Side-cannon builds scale damage with distance |
+| Mine Broadside | Broadside + Ink Mines | Broadside bullets can drop delayed mines |
+| Golden Prism | Gem Pulse + Prism Fork | Gem pickups can fire golden seeker shards |
+| Collector Beam | Gem Pulse + Magnet Range | Bullets vacuum rewards while traveling |
+| Chaos Shrapnel | Bounce + Split + Wiggle | Wild bouncing split shots pulse as shrapnel |
+| Spectral Chain | Spectral + Chain | Chain shots phase through crowds |
+| Black Ice | Freeze + Fear | Frozen enemies panic as control effects overlap |
+
+Starting loadouts also set a dominant baseline weapon identity before full theme synergy activates. This prevents weak two-item builds from feeling identical to the default octo.
 
 #### 3.3.3 Enemy Behavior Roles
 Enemies are not all the same "chase the player in a straight line" behavior:

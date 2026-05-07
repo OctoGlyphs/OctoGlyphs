@@ -1,7 +1,7 @@
 import { BlendModes, Input, Math as PhaserMath, Scene, TintModes, Utils } from "phaser";
 import { BODY_SPIN_ASSETS, ENEMY_DEATH_ASSET, GEM_TYPES, TANK_MINE_ASSETS, TRAIT_DISCOVERY_POOL, getAssetById } from "../data/assetCatalog.js";
 import { BACKGROUND_TRACKS, pickBackgroundForDepthIndex } from "../data/mediaCatalog.js";
-import { checkSynergies, aggregateSynergyHuntMods, aggregateSynergyStatMods } from "../data/synergies.js";
+import { checkSynergies, aggregateSynergyHuntMods, aggregateSynergyStatMods, getActiveTraitInteractions, getEquippedHuntFlagCounts } from "../data/synergies.js";
 import { addGemValue, discoverAsset, equipAsset, equippedAssets, equippedStats, isUnlocked, loadSave, saveGame, unlockAsset } from "../state/saveStore.js";
 import { triggerFTUE } from "../state/ftueManager.js";
 
@@ -1332,9 +1332,15 @@ export class IncubationScene extends Scene {
         // --- Synergy system: check equipped set bonuses ---
         const equippedIds = equipped.map(a => a.id);
         const { active: activeSynergies, partial: partialSynergies } = checkSynergies(equippedIds);
+        const traitFlagCounts = getEquippedHuntFlagCounts(equippedIds);
+        const activeTraitInteractions = getActiveTraitInteractions(traitFlagCounts);
         this.activeSynergies = activeSynergies;
         this.partialSynergies = partialSynergies;
+        this.activeTraitInteractions = activeTraitInteractions;
         this.tankRunStats.activeSynergyIds = activeSynergies.map(synergy => synergy.id);
+        this.tankRunStats.traitFlagCounts = traitFlagCounts;
+        this.tankRunStats.activeInteractionIds = activeTraitInteractions.map(interaction => interaction.id);
+        this.tankRunStats.activeInteractionFlags = activeTraitInteractions.reduce((flags, interaction) => Object.assign(flags, interaction.bullet || {}, interaction.run || {}), {});
 
         if (activeSynergies.length > 0) {
             const synergyHuntMods = aggregateSynergyHuntMods(activeSynergies);
@@ -2284,6 +2290,36 @@ export class IncubationScene extends Scene {
             this.fireGhostCurrentPattern(angle);
             return;
         }
+        this.fireDominantTraitPattern(angle);
+    }
+
+    fireDominantTraitPattern(angle) {
+        const flags = this.tankRunStats.traitFlagCounts || {};
+        const dominant = Object.entries(flags).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+        if (dominant === "poison" || dominant === "contagion") {
+            this.fireVenomBrewerPattern(angle);
+            return;
+        }
+        if (dominant === "homing" || dominant === "chain" || dominant === "prismFork") {
+            this.fireSmartShotPattern(angle);
+            return;
+        }
+        if (dominant === "freeze" || dominant === "guardianCharges" || dominant === "maxHp" || dominant === "spinPower") {
+            this.fireReefFortressPattern(angle);
+            return;
+        }
+        if (dominant === "gemPulse" || dominant === "magnetRange" || dominant === "luckBonus") {
+            this.fireGemResonancePattern(angle);
+            return;
+        }
+        if (dominant === "spectral" || dominant === "fear" || dominant === "boomerang") {
+            this.fireGhostCurrentPattern(angle);
+            return;
+        }
+        if (dominant === "bounce" || dominant === "split" || dominant === "wiggle" || dominant === "extraProjectiles" || dominant === "spiral") {
+            this.fireChaosInkPattern(angle);
+            return;
+        }
         this.fireDefaultTankShotPattern(angle);
     }
 
@@ -2423,6 +2459,8 @@ export class IncubationScene extends Scene {
         bullet.setData("lumpOfCoal", this.tankRunStats.lumpOfCoal);
         bullet.setData("spectral", this.tankRunStats.spectral);
         bullet.setData("synergyIds", [...(this.tankRunStats.activeSynergyIds || [])]);
+        bullet.setData("interactionIds", [...(this.tankRunStats.activeInteractionIds || [])]);
+        bullet.setData("interactionFlags", { ...(this.tankRunStats.activeInteractionFlags || {}) });
         bullet.setData("spawnedAt", this.time.now);
         bullet.setData("baseAngle", shotAngle);
         bullet.setData("baseSpeed", this.tankRunStats.shotSpeed);
@@ -2475,7 +2513,11 @@ export class IncubationScene extends Scene {
         const homing = bullet.getData("homing") || 0;
         if (homing <= 0 || !this.enemies || this.enemies.countActive(true) === 0) return;
 
-        const nearest = this.findNearestFrom(bullet, this.enemies.getChildren());
+        let candidates = this.enemies.getChildren();
+        if (this.bulletHasInteraction?.(bullet, "venom-lock") && candidates.some(enemy => enemy.active && (enemy.getData("poisoned") || 0) > 0)) {
+            candidates = candidates.filter(enemy => enemy.active && (enemy.getData("poisoned") || 0) > 0);
+        }
+        const nearest = this.findNearestFrom(bullet, candidates);
         if (!nearest) return;
 
         const delta = this.toroidalDelta(bullet.x, bullet.y, nearest.x, nearest.y);
@@ -2566,7 +2608,10 @@ export class IncubationScene extends Scene {
                     bullet.body.velocity.y *= -1;
                     bounced = true;
                 }
-                if (bounced) bullet.setData("bounceLeft", bounceLeft - 1);
+                if (bounced) {
+                    bullet.setData("bounceLeft", bounceLeft - 1);
+                    if (this.bulletHasInteraction(bullet, "toxic-ricochet")) this.spawnToxicPuddle(bullet.x, bullet.y, bullet.getData("poison") || 1);
+                }
             } else if (!spectral) {
                 this.wrapTankActor(bullet);
             }
@@ -2581,6 +2626,14 @@ export class IncubationScene extends Scene {
 
     bulletHasSynergy(bullet, synergyId) {
         return (bullet.getData("synergyIds") || []).includes(synergyId);
+    }
+
+    bulletHasInteraction(bullet, interactionId) {
+        return (bullet.getData("interactionIds") || []).includes(interactionId);
+    }
+
+    bulletInteractionFlags(bullet) {
+        return bullet.getData("interactionFlags") || {};
     }
 
     applyThemeSynergyBulletBehavior(bullet, age, baseAngle, baseSpeed) {
@@ -2654,6 +2707,35 @@ export class IncubationScene extends Scene {
             bullet.setScale(baseScale * pulse);
         }
 
+        if (this.bulletHasInteraction(bullet, "collector-beam") && age > 140 && age % 130 < 20) {
+            this.pullGemsTowardPoint(bullet.x, bullet.y, 118, 185);
+        }
+
+        if (this.bulletHasInteraction(bullet, "frost-lance") && age > 180 && age % 170 < 20) {
+            for (const enemy of this.enemies.getChildren()) {
+                if (!enemy.active || enemy.getData("boss")) continue;
+                if (this.toroidalDistance(bullet.x, bullet.y, enemy.x, enemy.y) <= 48) this.applyFreezeToEnemy(enemy, 1);
+            }
+            this.spawnPulseVisual(bullet.x, bullet.y, 48, 0x88ccff);
+        }
+
+        if (this.bulletHasInteraction(bullet, "coal-cannon")) {
+            const baseDamage = bullet.getData("baseDamage") || bullet.getData("damage") || 1;
+            if (!bullet.getData("baseDamage")) bullet.setData("baseDamage", baseDamage);
+            bullet.setData("damage", Math.max(bullet.getData("damage") || 1, Math.round(baseDamage * (1 + Math.min(0.9, age * 0.00032)))));
+        }
+
+        if (this.bulletHasInteraction(bullet, "mine-broadside") && age > 360 && !bullet.getData("mineBroadsideDone")) {
+            bullet.setData("mineBroadsideDone", true);
+            this.dropPlayerMineAt(bullet.x, bullet.y, false);
+        }
+
+        if (this.bulletHasInteraction(bullet, "chaos-shrapnel")) {
+            const pulse = 1 + Math.sin(age * 0.031) * 0.14;
+            const baseScale = bullet.getData("baseScale") || bullet.scaleX;
+            bullet.setScale(baseScale * pulse);
+        }
+
         if (this.bulletHasSynergy(bullet, "theme-artillery") && age > 420 && !bullet.getData("artilleryBurstDone")) {
             bullet.setData("artilleryBurstDone", true);
             const currentAngle = Math.atan2(bullet.body.velocity.y, bullet.body.velocity.x);
@@ -2707,6 +2789,7 @@ export class IncubationScene extends Scene {
                 hitEnemies?.add(enemy);
                 this.damageTankEnemy(enemy, Math.max(1, Math.round(1 + this.tankRunStats.damageBonus * 0.45)));
                 if (this.tankRunStats.poison > 0 && enemy.active) this.applyPoisonToEnemy(enemy, this.tankRunStats.poison);
+                if (this.tankRunStats.activeInteractionFlags?.iceRing && enemy.active && !enemy.getData("boss")) this.applyFreezeToEnemy(enemy, 1);
                 this.time.delayedCall(420, () => hitEnemies?.delete(enemy));
             }
         }
@@ -2753,6 +2836,7 @@ export class IncubationScene extends Scene {
 
         if ((bullet.getData("poison") || 0) > 0 && enemy.active) this.applyPoisonToEnemy(enemy, bullet.getData("poison"));
         if (this.bulletHasSynergy(bullet, "theme-toxic") && enemy.active) this.applyVenomBrewerSplash(enemy, bullet);
+        if (this.bulletHasInteraction(bullet, "black-ice") && enemy.active) this.applyFearToEnemy(enemy, 1);
         if ((bullet.getData("splitLeft") || 0) > 0) this.splitTankBullet(bullet, enemy);
         if (bullet.getData("critical") && this.tankRunStats.prismFork > 0) this.forkPrismBullet(bullet, enemy);
 
@@ -2767,8 +2851,8 @@ export class IncubationScene extends Scene {
         // --- Chain: on kill, jump to a tightly capped number of nearby enemies.
         const chain = bullet.getData("chain") || 0;
         if (chain > 0 && died) {
-            const jumpsLeft = bullet.getData("chainJumpsLeft") ?? Math.min(3, Math.max(2, chain));
-            if (jumpsLeft > 0) this.chainBulletToNext({ x: enemyX, y: enemyY, active: true }, jumpsLeft, bullet.getData("chainDamageScale") || 0.62);
+            const jumpsLeft = bullet.getData("chainJumpsLeft") ?? Math.min(4, Math.max(2, chain + (this.bulletHasInteraction(bullet, "smart-chain") ? 1 : 0)));
+            if (jumpsLeft > 0) this.chainBulletToNext({ x: enemyX, y: enemyY, active: true }, jumpsLeft, bullet.getData("chainDamageScale") || (this.bulletHasInteraction(bullet, "smart-chain") ? 0.72 : 0.62));
         }
 
         const pierceLeft = bullet.getData("pierceLeft") || 0;
@@ -2791,16 +2875,18 @@ export class IncubationScene extends Scene {
             this.configureTankBullet(child, angle, 0.48, 0.54);
             child.setData("critical", false);
             child.setData("prismForked", true);
+            if (this.bulletHasInteraction(bullet, "seeker-prism")) child.setData("homing", Math.max(child.getData("homing") || 0, 1.5));
         }
     }
 
     applyContagionBurst(x, y) {
-        const radius = 92 + this.tankRunStats.contagion * 28;
-        const damage = Math.max(1, this.tankRunStats.contagion);
+        const plagueBoost = this.tankRunStats.activeInteractionFlags?.plagueChain ? 1 : 0;
+        const radius = 92 + this.tankRunStats.contagion * 28 + plagueBoost * 34;
+        const damage = Math.max(1, this.tankRunStats.contagion + plagueBoost);
         for (const enemy of this.enemies.getChildren()) {
             if (!enemy.active) continue;
             if (this.toroidalDistance(x, y, enemy.x, enemy.y) > radius) continue;
-            this.applyPoisonToEnemy(enemy, this.tankRunStats.contagion);
+            this.applyPoisonToEnemy(enemy, this.tankRunStats.contagion + plagueBoost);
             this.damageTankEnemy(enemy, damage);
         }
         this.spawnPulseVisual(x, y, radius, 0x78ff69);
@@ -2816,6 +2902,17 @@ export class IncubationScene extends Scene {
         }
     }
 
+    spawnToxicPuddle(x, y, stacks = 1) {
+        const radius = 58;
+        this.spawnPulseVisual(x, y, radius, 0x78ff69);
+        this.time.delayedCall(120, () => {
+            for (const enemy of this.enemies.getChildren()) {
+                if (!enemy.active) continue;
+                if (this.toroidalDistance(x, y, enemy.x, enemy.y) <= radius) this.applyPoisonToEnemy(enemy, stacks);
+            }
+        });
+    }
+
     applyVenomBrewerSplash(enemy, bullet) {
         if (bullet.getData("venomSplashAt") === this.time.now) return;
         bullet.setData("venomSplashAt", this.time.now);
@@ -2829,6 +2926,15 @@ export class IncubationScene extends Scene {
             if (splashed >= 2) break;
         }
         if (splashed > 0) this.spawnPulseVisual(enemy.x, enemy.y, radius, 0x78ff69);
+        if (this.bulletHasInteraction(bullet, "spore-split") && !bullet.getData("sporeSplitDone")) {
+            bullet.setData("sporeSplitDone", true);
+            for (const offset of [-24, 24]) {
+                const angle = Math.atan2(bullet.body.velocity.y, bullet.body.velocity.x) + PhaserMath.DegToRad(offset);
+                const spore = this.createTankBulletAt(enemy.x, enemy.y, angle, 0.28, 0.38);
+                spore.setData("poison", Math.max(spore.getData("poison") || 0, 1));
+                spore.setData("splitLeft", 0);
+            }
+        }
     }
 
     applyFearToEnemy(enemy, rank) {
@@ -3076,6 +3182,8 @@ export class IncubationScene extends Scene {
             gemSources: { ...(this.tankHuntGemSources || {}) },
             damageTaken: this.tankHuntDamageTaken,
             family: this.getTankArchetypeLabel(),
+            synergies: [...(this.tankRunStats.activeSynergyIds || [])],
+            interactions: [...(this.tankRunStats.activeInteractionIds || [])],
             survived: Math.round((this.time.now - this.tankHuntStartedAt) / 1000),
             won
         };
@@ -3220,7 +3328,13 @@ export class IncubationScene extends Scene {
             xp: this.tankRunStats.xp,
             nextXp: this.tankRunStats.nextXp,
             hp: this.tankRunStats.hp,
-            maxHp: this.tankRunStats.maxHp
+            maxHp: this.tankRunStats.maxHp,
+            debug: {
+                primaryFamily: this.tankRunStats.primaryFamily,
+                activeSynergies: [...(this.tankRunStats.activeSynergyIds || [])],
+                activeInteractions: [...(this.tankRunStats.activeInteractionIds || [])],
+                topFlags: Object.entries(this.tankRunStats.traitFlagCounts || {}).sort((a, b) => b[1] - a[1]).slice(0, 8)
+            }
         };
     }
 
@@ -3268,12 +3382,16 @@ export class IncubationScene extends Scene {
             xpBreakpoints: [...TANK_XP_BREAKPOINTS],
             primaryFamily: "tide",
             activeSynergyIds: [],
+            activeInteractionIds: [],
+            activeInteractionFlags: {},
+            traitFlagCounts: {},
             mutationRanks: {},
             familyRanks: {},
             bossRewards: [],
             mutationChoices: [],
             bossRewardChoices: [],
             nextGemResonanceAt: 0,
+            nextGoldenPrismAt: 0,
             shotPatternIndex: 0
         };
     }
@@ -3823,8 +3941,15 @@ export class IncubationScene extends Scene {
         if (this.time.now < this.tankManualMineCooldown) return null;
 
         this.tankManualMineCooldown = this.time.now + cooldown;
+        const mine = this.dropPlayerMineAt(this.octo.x, this.octo.y, manual);
+        if (manual && mine) this.game.events.emit("octoglyphs:notice", "Panic mine dropped.");
+        return mine;
+    }
+
+    dropPlayerMineAt(x, y, manual = false) {
+        if (!this.tankHuntActive) return null;
         const mineDef = manual ? TANK_MINE_ASSETS[0] : (TANK_MINE_ASSETS[1] || TANK_MINE_ASSETS[0]);
-        const mine = this.playerMines.create(this.octo.x, this.octo.y, `${mineDef.key}-0`);
+        const mine = this.playerMines.create(x, y, `${mineDef.key}-0`);
         mine.setData("manual", manual);
         mine.setData("armed", true);
         mine.setData("spawnedAt", this.time.now);
@@ -3842,7 +3967,6 @@ export class IncubationScene extends Scene {
         this.time.delayedCall(manual ? 3200 : 1900, () => {
             if (mine.active) this.detonatePlayerMine(mine);
         });
-        if (manual) this.game.events.emit("octoglyphs:notice", "Panic mine dropped.");
         return mine;
     }
 
@@ -4747,6 +4871,18 @@ export class IncubationScene extends Scene {
         this.spawnPulseVisual(x, y, radius, 0xffd700);
     }
 
+    fireGoldenPrismReward(x, y) {
+        if (this.time.now < (this.tankRunStats.nextGoldenPrismAt || 0)) return;
+        this.tankRunStats.nextGoldenPrismAt = this.time.now + 620;
+        for (const offset of [-32, 0, 32]) {
+            const angle = PhaserMath.DegToRad(offset) + PhaserMath.FloatBetween(0, Math.PI * 2);
+            const shard = this.createTankBulletAt(x, y, angle, 0.34, 0.44);
+            shard.setTint(0xffd700);
+            shard.setData("homing", Math.max(shard.getData("homing") || 0, 1));
+            shard.setData("pierceLeft", 0);
+        }
+    }
+
     canCollectGem(gem) {
         if (!gem?.active) return false;
         if (this.time.now < (gem.getData("collectibleAt") || 0)) return false;
@@ -4769,6 +4905,7 @@ export class IncubationScene extends Scene {
         this.destroyGem(gem);
         if (this.tankHuntActive) this.addTankHuntGemSource(type, value);
         if (this.tankHuntActive && this.tankRunStats.gemPulse > 0) this.applyGemPulse(gemX, gemY);
+        if (this.tankHuntActive && this.tankRunStats.activeInteractionFlags?.goldenPrism) this.fireGoldenPrismReward(gemX, gemY);
         if (this.tankHuntActive && this.tankRunStats.activeSynergyIds?.includes("theme-treasure")) this.applyGemResonanceReward(gemX, gemY, type);
         if (this.tankHuntActive) this.addTankHuntXp(TANK_GEM_XP_VALUES[type] || 1);
         this.emitState();
@@ -5099,6 +5236,7 @@ export class IncubationScene extends Scene {
         const gemSourceRows = Object.entries(summary.gemSources || {}).length > 0
             ? Object.entries(summary.gemSources).map(([source, value]) => `<div class="hunt-summary-row hunt-summary-subrow"><span>${this.formatTankGemSource(source)}</span><span>${value}</span></div>`).join("")
             : `<div class="hunt-summary-row hunt-summary-subrow"><span>Collected</span><span>0</span></div>`;
+        const debugRules = [...(summary.synergies || []), ...(summary.interactions || [])].slice(0, 10).join(", ") || "none";
 
         const container = document.createElement("div");
         container.className = `hunt-summary-overlay ${outcomeClass}`;
@@ -5114,6 +5252,7 @@ export class IncubationScene extends Scene {
                     <div class="hunt-summary-row"><span>Damage Taken</span><span>${summary.damageTaken}</span></div>
                     <div class="hunt-summary-row"><span>Survived</span><span>${timeStr}</span></div>
                     <div class="hunt-summary-row"><span>Archetype</span><span>${summary.family}</span></div>
+                    <div class="hunt-summary-row"><span>Active Rules</span><span>${debugRules}</span></div>
                     <div class="hunt-summary-row"><span>Blue-Gem Value Earned</span><span>${summary.gemsEarned}</span></div>
                 </div>
                 <div class="hunt-summary-section">

@@ -229,6 +229,26 @@ export const THEME_SYNERGIES = [
 ];
 
 const ALL_SYNERGIES = [...SYNERGIES, ...THEME_SYNERGIES];
+
+export const TRAIT_INTERACTIONS = [
+    { id: "toxic-ricochet", name: "Toxic Ricochet", keys: ["poison", "bounce"], bullet: { poisonPuddleOnBounce: true }, desc: "Poison shots leave venom puddles when they bounce" },
+    { id: "venom-lock", name: "Venom Lock-On", keys: ["poison", "homing"], bullet: { venomLockOn: true }, desc: "Poisoned enemies pull guided shots toward them" },
+    { id: "spore-split", name: "Spore Split", keys: ["poison", "split"], bullet: { sporeSplit: true }, desc: "Split shots become smaller poison spores" },
+    { id: "plague-chain", name: "Plague Chain", keys: ["poison", "contagion"], run: { plagueChain: true }, desc: "Poison kills spread plague harder" },
+    { id: "frost-lance", name: "Frost Lance", keys: ["freeze", "pierce"], bullet: { frostLance: true }, desc: "Piercing frost bullets leave a slowing wake" },
+    { id: "ice-ring", name: "Ice Ring", keys: ["freeze", "orbit"], run: { iceRing: true }, desc: "Orbiters chill nearby enemies" },
+    { id: "haunted-return", name: "Haunted Return", keys: ["fear", "boomerang"], bullet: { hauntedReturn: true }, desc: "Returning shots bite through fleeing enemies" },
+    { id: "smart-chain", name: "Smart Chain", keys: ["homing", "chain"], bullet: { smartChain: true }, desc: "Chain jumps acquire smarter targets" },
+    { id: "seeker-prism", name: "Seeker Prism", keys: ["homing", "prismFork"], bullet: { seekerPrism: true }, desc: "Prism fork shards seek independently" },
+    { id: "coal-cannon", name: "Coal Cannon", keys: ["broadside", "lumpOfCoal"], bullet: { coalCannon: true }, desc: "Broadside cannons grow stronger with distance" },
+    { id: "mine-broadside", name: "Mine Broadside", keys: ["broadside", "inkMines"], bullet: { mineBroadside: true }, desc: "Side volleys drop delayed mines" },
+    { id: "golden-prism", name: "Golden Prism", keys: ["gemPulse", "prismFork"], run: { goldenPrism: true }, desc: "Gem pulses fling golden prism shards" },
+    { id: "collector-beam", name: "Collector Beam", keys: ["gemPulse", "magnetRange"], bullet: { collectorBeam: true }, desc: "Bullets vacuum rewards as they travel" },
+    { id: "chaos-shrapnel", name: "Chaos Shrapnel", keys: ["bounce", "split", "wiggle"], bullet: { chaosShrapnel: true }, desc: "Bouncing split shots become wild shrapnel" },
+    { id: "spectral-chain", name: "Spectral Chain", keys: ["spectral", "chain"], bullet: { spectralChain: true }, desc: "Chain shots phase through crowds" },
+    { id: "black-ice", name: "Black Ice", keys: ["freeze", "fear"], bullet: { blackIce: true }, desc: "Frozen enemies panic after thawing" }
+];
+
 const ASSET_BY_ID = new Map(ALL_ASSETS.map(asset => [asset.id, asset]));
 
 function themeMatchesForSynergy(synergy, equippedIds) {
@@ -316,4 +336,21 @@ export function aggregateSynergyStatMods(activeSynergies) {
         }
     }
     return result;
+}
+
+export function getEquippedHuntFlagCounts(equippedIds) {
+    const counts = {};
+    for (const id of equippedIds.filter(Boolean)) {
+        const asset = ASSET_BY_ID.get(id);
+        if (!asset?.huntMods) continue;
+        for (const [key, value] of Object.entries(asset.huntMods)) {
+            if (key === "family" || !value) continue;
+            counts[key] = (counts[key] || 0) + 1;
+        }
+    }
+    return counts;
+}
+
+export function getActiveTraitInteractions(flagCounts) {
+    return TRAIT_INTERACTIONS.filter(interaction => interaction.keys.every(key => (flagCounts[key] || 0) > 0));
 }
