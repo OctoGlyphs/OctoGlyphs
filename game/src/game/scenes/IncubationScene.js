@@ -32,11 +32,11 @@ const TANK_ENEMY_TYPES = [
 ];
 
 const TANK_BOSS_TYPES = [
-    { key: "tank-boss-blue-shark", hp: 38, speed: 78, scale: 2.25, gems: 9, behavior: "boss", facingOffset: -90, flipX: false, frames: 4, framePath: "./assets/generated/tank-enemies/tank-boss-blue-shark/frame_00.png" },
-    { key: "tank-boss-red-shark", hp: 42, speed: 86, scale: 2.35, gems: 10, behavior: "boss", facingOffset: -90, flipX: false, frames: 12, framePath: "./assets/generated/tank-enemies/tank-boss-red-shark/frame_00.png" },
-    { key: "tank-boss-mummy-shark", hp: 48, speed: 70, scale: 2.45, gems: 11, behavior: "boss", facingOffset: -90, flipX: false, frames: 13, framePath: "./assets/generated/tank-enemies/tank-boss-mummy-shark/frame_00.png" },
-    { key: "tank-boss-halloween-small-1", hp: 44, speed: 92, scale: 2.15, gems: 10, behavior: "boss", facingOffset: -90, flipX: false, frames: 20, framePath: "./assets/generated/tank-enemies/tank-boss-halloween-small-1/frame_00.png" },
-    { key: "tank-boss-halloween-small-2", hp: 50, speed: 98, scale: 2.22, gems: 11, behavior: "boss", facingOffset: -90, flipX: false, frames: 16, framePath: "./assets/generated/tank-enemies/tank-boss-halloween-small-2/frame_00.png" },
+    { key: "tank-boss-blue-shark", hp: 38, speed: 78, scale: 2.25, gems: 9, behavior: "boss", facingOffset: -90, flipX: false, frames: 4, framePath: "./assets/generated/tank-enemies/tank-boss-blue-shark/frame_00.png", fixedRotation: true },
+    { key: "tank-boss-red-shark", hp: 42, speed: 86, scale: 2.35, gems: 10, behavior: "boss", facingOffset: -90, flipX: false, frames: 12, framePath: "./assets/generated/tank-enemies/tank-boss-red-shark/frame_00.png", fixedRotation: true },
+    { key: "tank-boss-mummy-shark", hp: 48, speed: 70, scale: 2.45, gems: 11, behavior: "boss", facingOffset: -90, flipX: false, frames: 13, framePath: "./assets/generated/tank-enemies/tank-boss-mummy-shark/frame_00.png", fixedRotation: true },
+    { key: "tank-boss-halloween-small-1", hp: 44, speed: 92, scale: 2.15, gems: 10, behavior: "boss", facingOffset: -90, flipX: false, frames: 20, framePath: "./assets/generated/tank-enemies/tank-boss-halloween-small-1/frame_00.png", fixedRotation: true },
+    { key: "tank-boss-halloween-small-2", hp: 50, speed: 98, scale: 2.22, gems: 11, behavior: "boss", facingOffset: -90, flipX: false, frames: 16, framePath: "./assets/generated/tank-enemies/tank-boss-halloween-small-2/frame_00.png", fixedRotation: true },
     { key: "halloween-holloween1", hp: 52, speed: 82, scale: 1.58, gems: 12, behavior: "boss", facingOffset: 0, flipX: false, frames: 8, fixedRotation: true },
     { key: "halloween-holloween2", hp: 56, speed: 88, scale: 1.62, gems: 12, behavior: "boss", facingOffset: 0, flipX: false, frames: 8, fixedRotation: true },
     { key: "halloween-holloween3", hp: 60, speed: 78, scale: 1.66, gems: 13, behavior: "boss", facingOffset: 0, flipX: false, frames: 8, fixedRotation: true },
@@ -1160,9 +1160,11 @@ export class IncubationScene extends Scene {
         if (!this.tankHuntActive) {
             /* Spawn gems INSIDE the camera viewport so they're always visible.
                Use a margin inset so gems don't appear right at the edge. */
-            const margin = 80;
-            const rawX = PhaserMath.Between(view.x + margin, view.right - margin);
-            const rawY = PhaserMath.Between(view.y + margin, view.bottom - margin);
+            const safeDistance = 92;
+            const angle = this.octo.rotation + Math.PI + PhaserMath.FloatBetween(-0.45, 0.45);
+            const distance = PhaserMath.Between(safeDistance, safeDistance + 120);
+            const rawX = this.octo.x + Math.cos(angle) * distance;
+            const rawY = this.octo.y + Math.sin(angle) * distance;
             return { x: rawX, y: rawY };
         }
 
@@ -1332,6 +1334,7 @@ export class IncubationScene extends Scene {
         const { active: activeSynergies, partial: partialSynergies } = checkSynergies(equippedIds);
         this.activeSynergies = activeSynergies;
         this.partialSynergies = partialSynergies;
+        this.tankRunStats.activeSynergyIds = activeSynergies.map(synergy => synergy.id);
 
         if (activeSynergies.length > 0) {
             const synergyHuntMods = aggregateSynergyHuntMods(activeSynergies);
@@ -1478,14 +1481,12 @@ export class IncubationScene extends Scene {
         // Pick wave recipe
         this.currentWaveRecipe = pickWaveRecipe(wave);
         const recipe = this.currentWaveRecipe;
-        const baseInterval = Math.max(260, 680 - wave * 45);
-        const eventSpawnMult = (this.tankActiveEvent && this.time.now < this.tankActiveEvent.endsAt) ? (this.tankActiveEvent.def.spawnMult || 1) : 1;
-        const interval = Math.round(baseInterval * (recipe.intervalMult || 1) / eventSpawnMult);
+
+        // Trigger difficulty event before calculating interval so spawnMult applies immediately.
+        this.checkTriggerDifficultyEvent(wave);
+        const interval = this.getTankWaveInterval(wave, recipe);
 
         this.game.events.emit("octoglyphs:hunt-state", this.getTankHuntState());
-
-        // Trigger difficulty event if this wave has one
-        this.checkTriggerDifficultyEvent(wave);
 
         this.spawnTankWaveBurst(wave, waveToken);
         this.tankWaveTimer = this.time.addEvent({
@@ -1584,6 +1585,20 @@ export class IncubationScene extends Scene {
         }
     }
 
+
+    getTankDifficultyPressure() {
+        const score = this.tankRunStats?.startingPowerScore || 0;
+        return PhaserMath.Clamp(Math.floor(score / 3), 0, 12);
+    }
+
+    getTankWaveInterval(wave, recipe = this.currentWaveRecipe) {
+        const pressure = this.getTankDifficultyPressure();
+        const baseInterval = Math.max(220, 680 - wave * 45);
+        const eventSpawnMult = (this.tankActiveEvent && this.time.now < this.tankActiveEvent.endsAt) ? (this.tankActiveEvent.def.spawnMult || 1) : 1;
+        const pressureSpawnMult = 1 + Math.min(0.45, pressure * 0.04);
+        return Math.max(150, Math.round(baseInterval * (recipe?.intervalMult || 1) / (eventSpawnMult * pressureSpawnMult)));
+    }
+
     spawnTankWaveBurst(wave, waveToken = this.tankWaveToken) {
         if (!this.tankHuntActive || this.tankBoss || this.tankUpgradeChoiceActive || this.tankContinueChoiceActive || this.tankWaveResolving || wave !== this.tankHuntWave || waveToken !== this.tankWaveToken || this.tankHuntKills >= this.tankHuntGoal) return;
 
@@ -1597,8 +1612,8 @@ export class IncubationScene extends Scene {
         }
 
         const recipe = this.currentWaveRecipe || TANK_WAVE_RECIPES.find(r => r.id === "mixed_assault");
-        const startingPressure = Math.min(4, Math.floor((this.tankRunStats.startingPowerScore || 0) / 5));
-        const baseCount = 2 + Math.floor(wave / 2) + Math.min(1, Math.floor(startingPressure / 3));
+        const pressure = this.getTankDifficultyPressure();
+        const baseCount = 2 + Math.floor(wave / 2) + Math.floor(pressure / 6);
         const spawnPerPulse = Math.max(1, Math.round(baseCount * (recipe.countMult || 1)));
 
         // Pick a formation for this burst
@@ -1631,10 +1646,10 @@ export class IncubationScene extends Scene {
         const textureKey = this.getTankEnemyTextureKey(def);
         const enemy = this.enemies.create(position.x, position.y, textureKey);
 
-        const startingPressure = Math.min(4, Math.floor((this.tankRunStats.startingPowerScore || 0) / 5));
+        const pressure = this.getTankDifficultyPressure();
         const eventEliteMult = (this.tankActiveEvent && this.time.now < this.tankActiveEvent.endsAt) ? (this.tankActiveEvent.def.eliteChanceMult || 1) : 1;
-        const eliteChance = Math.min(52, Math.round((12 + startingPressure * 3) * eventEliteMult));
-        const eliteMinWave = startingPressure >= 3 ? 3 : 4;
+        const eliteChance = Math.min(64, Math.round((12 + pressure * 2.2) * eventEliteMult));
+        const eliteMinWave = pressure >= 8 ? 2 : (pressure >= 4 ? 3 : 4);
         const isElite = !isBoss && wave >= eliteMinWave && PhaserMath.Between(1, 100) <= eliteChance;
         const eliteMod = isElite ? this.pickEliteModifier() : null;
         const hpMult = eliteMod?.hpMult || 1;
@@ -1642,8 +1657,8 @@ export class IncubationScene extends Scene {
 
         const recipeHpMult = (!isBoss && recipe?.hpMult) ? recipe.hpMult : 1;
         const recipeSpeedMult = (!isBoss && recipe?.speedMult) ? recipe.speedMult : 1;
-        const startingHpMult = isBoss ? 1 : 1 + Math.min(0.2, startingPressure * 0.05);
-        const enemyMaxHp = Math.round((def.hp + Math.max(0, wave - 1) * 0.55) * hpMult * startingHpMult * recipeHpMult);
+        const pressureHpMult = isBoss ? 1 + Math.min(2.4, pressure * 0.14) : 1 + Math.min(0.85, pressure * 0.07);
+        const enemyMaxHp = Math.round((def.hp + Math.max(0, wave - 1) * 0.55) * hpMult * pressureHpMult * recipeHpMult);
         enemy.setData("hp", enemyMaxHp);
         enemy.setData("maxHp", enemyMaxHp);
         enemy.setData("speed", (def.speed + Math.max(0, wave - 1) * 6.5) * speedMult * recipeSpeedMult);
@@ -2163,6 +2178,21 @@ export class IncubationScene extends Scene {
                 targetVelocityY = -dy / length * speed;
             }
 
+            if (this.tankRunStats.activeSynergyIds?.includes("theme-ghost") && length < 180 && !enemy.getData("boss")) {
+                targetVelocityX *= 0.76;
+                targetVelocityY *= 0.76;
+                if (!enemy.getData("ghostCurrentTint")) {
+                    enemy.setData("ghostCurrentTint", true);
+                    enemy.setTint(0xaa77ff);
+                    this.time.delayedCall(120, () => {
+                        if (enemy.active && enemy.getData("ghostCurrentTint")) {
+                            enemy.setData("ghostCurrentTint", false);
+                            if (!enemy.getData("frozen") && !enemy.getData("feared") && !enemy.getData("elite")) enemy.clearTint();
+                        }
+                    });
+                }
+            }
+
             if (enemy.getData("instantVelocity")) {
                 enemy.setData("instantVelocity", false);
                 enemy.body.velocity.x = targetVelocityX;
@@ -2229,6 +2259,35 @@ export class IncubationScene extends Scene {
     }
 
     fireTankShotPattern(angle) {
+        const synergyIds = this.tankRunStats.activeSynergyIds || [];
+        if (synergyIds.includes("theme-chaos")) {
+            this.fireChaosInkPattern(angle);
+            return;
+        }
+        if (synergyIds.includes("theme-fortress")) {
+            this.fireReefFortressPattern(angle);
+            return;
+        }
+        if (synergyIds.includes("theme-smart-shot")) {
+            this.fireSmartShotPattern(angle);
+            return;
+        }
+        if (synergyIds.includes("theme-toxic")) {
+            this.fireVenomBrewerPattern(angle);
+            return;
+        }
+        if (synergyIds.includes("theme-treasure")) {
+            this.fireGemResonancePattern(angle);
+            return;
+        }
+        if (synergyIds.includes("theme-ghost")) {
+            this.fireGhostCurrentPattern(angle);
+            return;
+        }
+        this.fireDefaultTankShotPattern(angle);
+    }
+
+    fireDefaultTankShotPattern(angle) {
         const shotCount = this.getTankShotCount();
         const spread = PhaserMath.DegToRad(10 + Math.min(18, this.tankRunStats.broadside * 4));
         for (let i = 0; i < shotCount; i += 1) {
@@ -2256,8 +2315,89 @@ export class IncubationScene extends Scene {
         }
     }
 
+    fireVenomBrewerPattern(angle) {
+        this.fireDefaultTankShotPattern(angle);
+        const wobble = Math.sin((this.tankRunStats.shotPatternIndex || 0) * 0.9) * PhaserMath.DegToRad(18);
+        const cloud = this.createTankBullet(angle + wobble, 0.44, 1.28);
+        cloud?.setData("poisonCloud", true);
+        cloud?.setData("poison", Math.max(cloud.getData("poison") || 0, 1));
+        cloud?.setData("homing", Math.max(cloud.getData("homing") || 0, 0.45));
+        cloud?.body?.velocity?.scale(0.58);
+        this.tankRunStats.shotPatternIndex += 1;
+    }
+
+    fireSmartShotPattern(angle) {
+        const shotCount = Math.max(1, this.getTankShotCount());
+        const spread = PhaserMath.DegToRad(7);
+        for (let i = 0; i < shotCount; i += 1) {
+            const shotAngle = angle + (shotCount === 1 ? 0 : -spread / 2 + (spread / (shotCount - 1)) * i);
+            const bullet = this.createTankBullet(shotAngle, 0.92, 0.86);
+            bullet?.setData("smartNeedle", true);
+            bullet?.setData("homing", Math.max(bullet.getData("homing") || 0, 2));
+            bullet?.setData("chain", Math.max(bullet.getData("chain") || 0, 1));
+            bullet?.body?.velocity?.scale(1.18);
+        }
+    }
+
+    fireReefFortressPattern(angle) {
+        const shell = this.createTankBullet(angle, 1.16, 1.22);
+        shell?.setData("fortressShell", true);
+        shell?.setData("pierceLeft", Math.max(shell.getData("pierceLeft") || 0, 2));
+        shell?.setData("freeze", Math.max(shell.getData("freeze") || 0, 1));
+        shell?.body?.velocity?.scale(0.78);
+        if ((this.tankRunStats.shotPatternIndex || 0) % 2 === 0) {
+            this.createTankBullet(angle + PhaserMath.DegToRad(18), 0.62, 0.72);
+            this.createTankBullet(angle - PhaserMath.DegToRad(18), 0.62, 0.72);
+        }
+        this.tankRunStats.shotPatternIndex += 1;
+    }
+
+    fireGemResonancePattern(angle) {
+        const bullet = this.createTankBullet(angle, 0.9, 0.98);
+        bullet?.setData("gemLure", true);
+        const orbitAngle = angle + Math.PI / 2 * ((this.tankRunStats.shotPatternIndex || 0) % 2 === 0 ? 1 : -1);
+        const shard = this.createTankBullet(orbitAngle, 0.42, 0.55);
+        shard?.setData("gemLure", true);
+        shard?.setData("boomerang", Math.max(shard.getData("boomerang") || 0, 1));
+        this.tankRunStats.shotPatternIndex += 1;
+    }
+
+    fireGhostCurrentPattern(angle) {
+        const left = this.createTankBullet(angle + PhaserMath.DegToRad(24), 0.72, 0.82);
+        const right = this.createTankBullet(angle - PhaserMath.DegToRad(24), 0.72, 0.82);
+        for (const bullet of [left, right]) {
+            bullet?.setData("ghostDrift", true);
+            bullet?.setData("spectral", Math.max(bullet.getData("spectral") || 0, 1));
+            bullet?.setData("boomerang", Math.max(bullet.getData("boomerang") || 0, 1));
+            bullet?.setAlpha(0.72);
+        }
+    }
+
+    fireChaosInkPattern(angle) {
+        const index = this.tankRunStats.shotPatternIndex || 0;
+        const patterns = [
+            [0],
+            [-18, 18],
+            [-34, 0, 34],
+            [-68, -24, 24, 68]
+        ];
+        const pattern = patterns[index % patterns.length];
+        for (const offset of pattern) {
+            const jitter = PhaserMath.DegToRad(offset + PhaserMath.Between(-7, 7));
+            const bullet = this.createTankBullet(angle + jitter, 0.68, PhaserMath.FloatBetween(0.68, 1.08));
+            bullet?.setData("wiggle", Math.max(bullet.getData("wiggle") || 0, 1));
+            if (PhaserMath.Between(1, 100) <= 45) bullet?.setData("bounceLeft", Math.max(bullet.getData("bounceLeft") || 0, 1));
+            if (PhaserMath.Between(1, 100) <= 28) bullet?.setData("splitLeft", Math.max(bullet.getData("splitLeft") || 0, 1));
+        }
+        this.tankRunStats.shotPatternIndex = index + 1;
+    }
+
     createTankBullet(shotAngle, damageScale = 1, scaleMultiplier = 1) {
-        const bullet = this.bullets.create(this.octo.x + Math.cos(shotAngle) * 30, this.octo.y + Math.sin(shotAngle) * 30, this.getTankBulletTextureKey());
+        return this.createTankBulletAt(this.octo.x + Math.cos(shotAngle) * 30, this.octo.y + Math.sin(shotAngle) * 30, shotAngle, damageScale, scaleMultiplier);
+    }
+
+    createTankBulletAt(x, y, shotAngle, damageScale = 1, scaleMultiplier = 1) {
+        const bullet = this.bullets.create(x, y, this.getTankBulletTextureKey());
         this.configureTankBullet(bullet, shotAngle, damageScale, scaleMultiplier);
         return bullet;
     }
@@ -2282,11 +2422,13 @@ export class IncubationScene extends Scene {
         bullet.setData("boomerang", this.tankRunStats.boomerang);
         bullet.setData("lumpOfCoal", this.tankRunStats.lumpOfCoal);
         bullet.setData("spectral", this.tankRunStats.spectral);
+        bullet.setData("synergyIds", [...(this.tankRunStats.activeSynergyIds || [])]);
         bullet.setData("spawnedAt", this.time.now);
         bullet.setData("baseAngle", shotAngle);
         bullet.setData("baseSpeed", this.tankRunStats.shotSpeed);
         bullet.setData("hitEnemies", new Set());
         bullet.setScale((bullet.getData("critical") ? 1.72 : 1.45) * this.tankRunStats.bulletScale * scaleMultiplier);
+        bullet.setData("baseScale", bullet.scaleX);
         bullet.setDepth(18);
         bullet.setTint(this.getTankBulletTint());
         this.improveGameplayReadability(bullet, { outlineAlpha: 0.36, haloColor: this.getTankBulletTint(), haloAlpha: 0.28, haloBlur: 7 });
@@ -2305,6 +2447,14 @@ export class IncubationScene extends Scene {
     }
 
     getTankBulletTint() {
+        const synergyIds = this.tankRunStats.activeSynergyIds || [];
+        if (synergyIds.includes("theme-toxic")) return PhaserMath.RND.pick([0x78ff69, 0xb6ff4a, 0x35d957]);
+        if (synergyIds.includes("theme-smart-shot")) return PhaserMath.RND.pick([0x66ccff, 0xffee55, 0xffffff]);
+        if (synergyIds.includes("theme-fortress")) return PhaserMath.RND.pick([0x66ccff, 0xd8f8ff, 0xffffff]);
+        if (synergyIds.includes("theme-treasure")) return PhaserMath.RND.pick([0xffd700, 0xffa7ff, 0x9effff]);
+        if (synergyIds.includes("theme-ghost")) return PhaserMath.RND.pick([0xaa77ff, 0xdd88ff, 0x88ffaa]);
+        if (synergyIds.includes("theme-chaos")) return PhaserMath.RND.pick([0xff88cc, 0xffe783, 0x88ffaa]);
+        if (synergyIds.includes("theme-artillery")) return PhaserMath.RND.pick([0xff8844, 0xffee55, 0xff4422]);
         if (this.tankRunStats.critChance > 0 && this.tankRunStats.primaryFamily === "prism") return PhaserMath.RND.pick([0xffa7ff, 0x9effff, 0xfff28a, 0xffffff]);
         if (this.tankRunStats.freeze > 0) return 0x66ccff;
         if (this.tankRunStats.fear > 0) return 0xaa44ff;
@@ -2421,8 +2571,99 @@ export class IncubationScene extends Scene {
                 this.wrapTankActor(bullet);
             }
 
+            // --- Theme synergy behavior glue: small Isaac-style rule collisions ---
+            this.applyThemeSynergyBulletBehavior(bullet, age, baseAngle, baseSpeed);
+
             // --- Update rotation to match velocity ---
             bullet.rotation = Math.atan2(bullet.body.velocity.y, bullet.body.velocity.x) + TANK_BULLET_ANGLE_OFFSET;
+        }
+    }
+
+    bulletHasSynergy(bullet, synergyId) {
+        return (bullet.getData("synergyIds") || []).includes(synergyId);
+    }
+
+    applyThemeSynergyBulletBehavior(bullet, age, baseAngle, baseSpeed) {
+        if (!bullet?.active || !bullet.body) return;
+
+        if (this.bulletHasSynergy(bullet, "theme-smart-shot")) {
+            const speed = Math.max(baseSpeed * 0.88, Math.hypot(bullet.body.velocity.x, bullet.body.velocity.y));
+            const hitEnemies = bullet.getData("hitEnemies");
+            const nearest = this.findNearestFrom(bullet, this.enemies.getChildren().filter(enemy => !hitEnemies?.has(enemy)));
+            if (nearest) {
+                const delta = this.toroidalDelta(bullet.x, bullet.y, nearest.x, nearest.y);
+                const targetAngle = Math.atan2(delta.dy, delta.dx);
+                const currentAngle = Math.atan2(bullet.body.velocity.y, bullet.body.velocity.x);
+                const turnRate = bullet.getData("smartNeedle") ? 0.038 : 0.018;
+                const nextAngle = PhaserMath.Angle.RotateTo(currentAngle, targetAngle, turnRate);
+                bullet.body.setVelocity(Math.cos(nextAngle) * speed, Math.sin(nextAngle) * speed);
+            }
+        }
+
+        if (bullet.getData("poisonCloud")) {
+            const drift = Math.sin(age * 0.011) * 0.012;
+            const currentAngle = Math.atan2(bullet.body.velocity.y, bullet.body.velocity.x) + drift;
+            const speed = Math.max(130, Math.hypot(bullet.body.velocity.x, bullet.body.velocity.y) * 0.998);
+            bullet.body.setVelocity(Math.cos(currentAngle) * speed, Math.sin(currentAngle) * speed);
+            if (age > 260 && age % 180 < 20) this.spawnPulseVisual(bullet.x, bullet.y, 42, 0x78ff69);
+        }
+
+        if (bullet.getData("ghostDrift")) {
+            const drift = Math.sin(age * 0.007 + baseAngle) * 0.024;
+            const currentAngle = Math.atan2(bullet.body.velocity.y, bullet.body.velocity.x) + drift;
+            const speed = Math.max(baseSpeed * 0.52, Math.hypot(bullet.body.velocity.x, bullet.body.velocity.y));
+            bullet.body.setVelocity(Math.cos(currentAngle) * speed, Math.sin(currentAngle) * speed);
+        }
+
+        if (bullet.getData("gemLure") && age > 160 && age % 160 < 20) {
+            this.pullGemsTowardPoint(bullet.x, bullet.y, 92, 145);
+        }
+
+        if (this.bulletHasSynergy(bullet, "theme-fortress")) {
+            if (age > 260 && !bullet.getData("reefFortressArmed")) {
+                bullet.setData("reefFortressArmed", true);
+                bullet.setData("pierceLeft", Math.max(bullet.getData("pierceLeft") || 0, 1));
+            }
+            if (age > 360 && !bullet.getData("reefFortressWakeDone")) {
+                bullet.setData("reefFortressWakeDone", true);
+                const radius = 66;
+                for (const enemy of this.enemies.getChildren()) {
+                    if (!enemy.active || enemy.getData("boss")) continue;
+                    if (this.toroidalDistance(bullet.x, bullet.y, enemy.x, enemy.y) > radius) continue;
+                    this.applyFreezeToEnemy(enemy, 1);
+                }
+                this.spawnPulseVisual(bullet.x, bullet.y, radius, 0x88ccff);
+            }
+        }
+
+        if (this.bulletHasSynergy(bullet, "theme-treasure")) {
+            const pulse = 1 + Math.sin(age * 0.026) * 0.08;
+            bullet.setAlpha(0.78 + Math.sin(age * 0.018) * 0.18);
+            const baseScale = bullet.getData("baseScale") || bullet.scaleX;
+            bullet.setScale(baseScale * pulse);
+            if (age > 520 && !bullet.getData("gemResonancePingDone")) {
+                bullet.setData("gemResonancePingDone", true);
+                this.pullGemsTowardPoint(bullet.x, bullet.y, 148, 180);
+                this.spawnPulseVisual(bullet.x, bullet.y, 148, 0xffd700);
+            }
+        }
+
+        if (this.bulletHasSynergy(bullet, "theme-chaos")) {
+            const pulse = 1 + Math.sin(age * 0.018) * 0.12;
+            const baseScale = bullet.getData("baseScale") || bullet.scaleX;
+            bullet.setScale(baseScale * pulse);
+        }
+
+        if (this.bulletHasSynergy(bullet, "theme-artillery") && age > 420 && !bullet.getData("artilleryBurstDone")) {
+            bullet.setData("artilleryBurstDone", true);
+            const currentAngle = Math.atan2(bullet.body.velocity.y, bullet.body.velocity.x);
+            const left = this.createTankBulletAt(bullet.x, bullet.y, currentAngle + PhaserMath.DegToRad(90), 0.34, 0.42);
+            const right = this.createTankBulletAt(bullet.x, bullet.y, currentAngle - PhaserMath.DegToRad(90), 0.34, 0.42);
+            for (const child of [left, right]) {
+                if (!child) continue;
+                child.setTint(0xff8844);
+                child.setData("artilleryBurstDone", true);
+            }
         }
     }
 
@@ -2511,6 +2752,7 @@ export class IncubationScene extends Scene {
         const died = wasAlive && !enemy.active;
 
         if ((bullet.getData("poison") || 0) > 0 && enemy.active) this.applyPoisonToEnemy(enemy, bullet.getData("poison"));
+        if (this.bulletHasSynergy(bullet, "theme-toxic") && enemy.active) this.applyVenomBrewerSplash(enemy, bullet);
         if ((bullet.getData("splitLeft") || 0) > 0) this.splitTankBullet(bullet, enemy);
         if (bullet.getData("critical") && this.tankRunStats.prismFork > 0) this.forkPrismBullet(bullet, enemy);
 
@@ -2572,6 +2814,21 @@ export class IncubationScene extends Scene {
                 if (enemy.active) this.damageTankEnemy(enemy, 1);
             });
         }
+    }
+
+    applyVenomBrewerSplash(enemy, bullet) {
+        if (bullet.getData("venomSplashAt") === this.time.now) return;
+        bullet.setData("venomSplashAt", this.time.now);
+        const radius = 76;
+        let splashed = 0;
+        for (const other of this.enemies.getChildren()) {
+            if (!other.active || other === enemy) continue;
+            if (this.toroidalDistance(enemy.x, enemy.y, other.x, other.y) > radius) continue;
+            this.applyPoisonToEnemy(other, 1);
+            splashed += 1;
+            if (splashed >= 2) break;
+        }
+        if (splashed > 0) this.spawnPulseVisual(enemy.x, enemy.y, radius, 0x78ff69);
     }
 
     applyFearToEnemy(enemy, rank) {
@@ -3010,11 +3267,14 @@ export class IncubationScene extends Scene {
             nextXpMult: 1,
             xpBreakpoints: [...TANK_XP_BREAKPOINTS],
             primaryFamily: "tide",
+            activeSynergyIds: [],
             mutationRanks: {},
             familyRanks: {},
             bossRewards: [],
             mutationChoices: [],
-            bossRewardChoices: []
+            bossRewardChoices: [],
+            nextGemResonanceAt: 0,
+            shotPatternIndex: 0
         };
     }
 
@@ -3199,9 +3459,7 @@ export class IncubationScene extends Scene {
             const wave = this.tankHuntWave;
             const waveToken = this.tankWaveToken;
             const recipe = this.currentWaveRecipe || TANK_WAVE_RECIPES.find(r => r.id === "mixed_assault");
-            const baseInterval = Math.max(260, 680 - wave * 45);
-            const eventSpawnMult = (this.tankActiveEvent && this.time.now < this.tankActiveEvent.endsAt) ? (this.tankActiveEvent.def.spawnMult || 1) : 1;
-            const interval = Math.round(baseInterval * (recipe.intervalMult || 1) / eventSpawnMult);
+            const interval = this.getTankWaveInterval(wave, recipe);
             this.tankWaveTimer = this.time.addEvent({
                 delay: interval,
                 loop: true,
@@ -3660,8 +3918,8 @@ export class IncubationScene extends Scene {
         const position = { x, y };
         const gem = this.gems.create(position.x, position.y, `${gemDef.key}-0`);
         if (!gem) { console.warn("[GEM] gems.create returned null/undefined at", position.x, position.y); return; }
-        const collectionGraceMs = options.collectionGraceMs ?? GEM_COLLECTION_GRACE_MS;
-        const revealMs = Math.min(GEM_SPAWN_REVEAL_MS, collectionGraceMs);
+        const collectionGraceMs = options.collectionGraceMs ?? 0;
+        const revealMs = Math.min(GEM_SPAWN_REVEAL_MS, Math.max(collectionGraceMs, 220));
         gem.setData("gemType", type);
         gem.setData("value", options.value || gemDef.value);
         gem.setData("frame", PhaserMath.Between(0, gemDef.frames - 1));
@@ -4462,6 +4720,33 @@ export class IncubationScene extends Scene {
         }
     }
 
+    pullGemsTowardPoint(x, y, radius, speed) {
+        if (!this.gems) return;
+        for (const gem of this.gems.getChildren()) {
+            if (!gem.active || !gem.body) continue;
+            if (this.time.now < (gem.getData("collectibleAt") || 0)) continue;
+            const distance = this.toroidalDistance(x, y, gem.x, gem.y);
+            if (distance > radius) continue;
+            const pull = PhaserMath.Clamp(1 - distance / radius, 0.2, 1);
+            this.moveBodyTowardToroidal(gem, { x, y }, speed * pull);
+        }
+    }
+
+    applyGemResonanceReward(x, y, type) {
+        if (this.time.now < (this.tankRunStats.nextGemResonanceAt || 0)) return;
+        const chance = type === "green" ? 18 : 34;
+        if (PhaserMath.Between(1, 100) > chance) return;
+        this.tankRunStats.nextGemResonanceAt = this.time.now + 700;
+        const radius = 120;
+        for (const enemy of this.enemies.getChildren()) {
+            if (!enemy.active) continue;
+            if (this.toroidalDistance(x, y, enemy.x, enemy.y) > radius) continue;
+            this.damageTankEnemy(enemy, 1);
+        }
+        this.pullGemsTowardPoint(x, y, 170, 220);
+        this.spawnPulseVisual(x, y, radius, 0xffd700);
+    }
+
     canCollectGem(gem) {
         if (!gem?.active) return false;
         if (this.time.now < (gem.getData("collectibleAt") || 0)) return false;
@@ -4484,6 +4769,7 @@ export class IncubationScene extends Scene {
         this.destroyGem(gem);
         if (this.tankHuntActive) this.addTankHuntGemSource(type, value);
         if (this.tankHuntActive && this.tankRunStats.gemPulse > 0) this.applyGemPulse(gemX, gemY);
+        if (this.tankHuntActive && this.tankRunStats.activeSynergyIds?.includes("theme-treasure")) this.applyGemResonanceReward(gemX, gemY, type);
         if (this.tankHuntActive) this.addTankHuntXp(TANK_GEM_XP_VALUES[type] || 1);
         this.emitState();
         saveGame(this.save);

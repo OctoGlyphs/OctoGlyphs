@@ -1,13 +1,17 @@
+import { ALL_ASSETS } from "./assetCatalog.js";
+
 // ============================================================================
-// SYNERGY SYSTEM — named set bonuses (celebration layer on top of composable flags)
-// Check equipped item IDs → if all required items present → apply bonus
+// SYNERGY SYSTEM — named set bonuses + emergent Isaac-style theme bonuses
+// Check equipped item IDs → exact recipes and stacked huntMod themes → apply bonus
 // ============================================================================
 
 /**
  * Each synergy:
  *   id        — unique key
  *   name      — display name (shown in banner + loadout tease)
- *   items     — array of asset IDs required to activate
+ *   items     — array of asset IDs required to activate, for exact recipes
+ *   themeKeys — huntMod keys that count toward an emergent theme synergy
+ *   threshold — distinct equipped traits needed for an emergent theme synergy
  *   bonus     — huntMods object applied on top of existing loadout
  *   statBonus — statMods object applied to idle/persistent stats
  *   desc      — player-facing description
@@ -151,24 +155,129 @@ export const SYNERGIES = [
     }
 ];
 
+export const THEME_SYNERGIES = [
+    {
+        id: "theme-toxic",
+        name: "☣️ Venom Brewer",
+        themeKeys: ["poison", "contagion"],
+        threshold: 3,
+        bonus: { poison: 1, contagion: 1, damageBonus: 1 },
+        statBonus: { damage: 0.04 },
+        desc: "Stack toxic traits to make poison spread harder",
+        color: "#78ff69"
+    },
+    {
+        id: "theme-smart-shot",
+        name: "🎯 Smart Shot",
+        themeKeys: ["homing", "chain", "prismFork"],
+        threshold: 3,
+        bonus: { homing: 1, chain: 1, shotSpeed: 1.06 },
+        statBonus: { magnetRange: 0.04 },
+        desc: "Guided shots learn to chain through crowds",
+        color: "#66ccff"
+    },
+    {
+        id: "theme-fortress",
+        name: "🏰 Reef Fortress",
+        themeKeys: ["guardianCharges", "maxHp", "freeze", "spinPower"],
+        threshold: 3,
+        bonus: { guardianCharges: 1, maxHp: 1, freeze: 1 },
+        statBonus: { armor: 0.35 },
+        desc: "Defensive traits harden into a survival shell",
+        color: "#88ccff"
+    },
+    {
+        id: "theme-treasure",
+        name: "💎 Gem Resonance",
+        themeKeys: ["gemPulse", "magnetRange", "luckBonus"],
+        threshold: 3,
+        bonus: { gemPulse: 1, magnetRange: 1.12, critChance: 0.03 },
+        statBonus: { gemValue: 0.08, luck: 0.04 },
+        desc: "Collector traits make gems pull harder and pay better",
+        color: "#ffd700"
+    },
+    {
+        id: "theme-ghost",
+        name: "👻 Ghost Current",
+        themeKeys: ["spectral", "fear", "boomerang"],
+        threshold: 3,
+        bonus: { spectral: 1, fear: 1, boomerang: 1 },
+        statBonus: { swimSpeed: 0.04 },
+        desc: "Spooky traits make ink return from impossible angles",
+        color: "#aa77ff"
+    },
+    {
+        id: "theme-chaos",
+        name: "🎪 Chaos Ink",
+        themeKeys: ["bounce", "split", "wiggle", "extraProjectiles", "spiral"],
+        threshold: 3,
+        bonus: { bounce: 1, split: 1, wiggle: 1 },
+        statBonus: { luck: 0.05 },
+        desc: "Unstable traits turn shots into a messy carnival",
+        color: "#ff88dd"
+    },
+    {
+        id: "theme-artillery",
+        name: "🚀 Broadside Battery",
+        themeKeys: ["broadside", "damageBonus", "lumpOfCoal", "inkMines", "backblast"],
+        threshold: 3,
+        bonus: { broadside: 1, damageBonus: 1, inkMines: 1 },
+        statBonus: { damage: 0.06 },
+        desc: "Heavy traits add side volleys, mines, and harder hits",
+        color: "#ff8844"
+    }
+];
+
+const ALL_SYNERGIES = [...SYNERGIES, ...THEME_SYNERGIES];
+const ASSET_BY_ID = new Map(ALL_ASSETS.map(asset => [asset.id, asset]));
+
+function themeMatchesForSynergy(synergy, equippedIds) {
+    const themeKeys = new Set(synergy.themeKeys || []);
+    if (themeKeys.size === 0) return [];
+
+    return equippedIds
+        .filter(Boolean)
+        .filter(id => {
+            const asset = ASSET_BY_ID.get(id);
+            if (!asset?.huntMods) return false;
+            return Object.keys(asset.huntMods).some(key => themeKeys.has(key));
+        });
+}
+
 /**
  * Check which synergies are active given a set of equipped asset IDs.
  * Returns { active: Synergy[], partial: { synergy, have, need }[] }
  */
 export function checkSynergies(equippedIds) {
-    const idSet = new Set(equippedIds.filter(Boolean));
+    const cleanIds = equippedIds.filter(Boolean);
+    const idSet = new Set(cleanIds);
     const active = [];
     const partial = [];
 
-    for (const synergy of SYNERGIES) {
-        const have = synergy.items.filter(id => idSet.has(id));
-        if (have.length === synergy.items.length) {
+    for (const synergy of ALL_SYNERGIES) {
+        if (synergy.items) {
+            const have = synergy.items.filter(id => idSet.has(id));
+            if (have.length === synergy.items.length) {
+                active.push(synergy);
+            } else if (have.length > 0) {
+                partial.push({
+                    synergy,
+                    have: have.length,
+                    need: synergy.items.length
+                });
+            }
+            continue;
+        }
+
+        const have = themeMatchesForSynergy(synergy, cleanIds);
+        const need = synergy.threshold || 3;
+        if (have.length >= need) {
             active.push(synergy);
         } else if (have.length > 0) {
             partial.push({
                 synergy,
                 have: have.length,
-                need: synergy.items.length
+                need
             });
         }
     }

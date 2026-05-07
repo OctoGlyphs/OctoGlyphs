@@ -1,5 +1,25 @@
 # OctoGlyphs Devlog
 
+## 2026-05-06 — Add First Isaac-Style Synergy Behavior Pass
+
+**What**: Added a checkpoint for the first active synergy behavior pass after the publishing-ready state.
+
+**Changes**:
+- Added emergent theme synergies on top of existing exact outfit synergies.
+- Added synergy tests and wired them into the game test script.
+- Made active synergies alter bullet behavior and firing patterns instead of only changing stats.
+- Rebuilt the game bundle, including the Hermes public bundle copy used for local host testing.
+
+**Why**: Runs were still feeling too similar. This checkpoint captures the first pass toward Binding of Isaac-style run identity before the deeper pairwise trait interaction rewrite.
+
+**Verification**:
+- `npm test` passes in `game`.
+- `npm run build` passes in `game` with only the existing Vite chunk-size warning.
+
+**What's next**: Add a true interaction table for flag pairs/triples, make dominant starting traits define baseline shot geometry, update the GDD with the current interaction model, and add a debug readout for active flags/combo rules.
+
+---
+
 ## 2026-05-06 — Working Publishing-Ready State Checkpoint
 
 **What**: Checkpointed the current OpenClaw plugin bundle after fresh-machine testing confirmed the game is in a working state ready for publishing once the ClawHub account age gate expires.
