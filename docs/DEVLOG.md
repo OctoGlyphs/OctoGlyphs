@@ -1,5 +1,27 @@
 # OctoGlyphs Devlog
 
+## 2026-05-07 — Add Trait Interaction Rule Collisions
+
+**What**: Added the deeper Binding of Isaac-style trait interaction layer on top of exact synergies and theme synergies.
+
+**Changes**:
+- Added a pairwise/triple trait interaction table for flag collisions such as Poison + Bounce, Poison + Homing, Freeze + Pierce, Homing + Chain, Homing + Prism Fork, Broadside + Mines, Gem Pulse + Prism Fork, and Bounce + Split + Wiggle.
+- Wired active interaction IDs and flags into hunt run state, bullet metadata, run summaries, and the hunt-state debug payload.
+- Made dominant starting trait flags select non-default baseline weapon patterns even before a full three-trait theme synergy activates.
+- Added new bullet/runtime behaviors: toxic ricochet puddles, venom lock-on targeting, spore splits, plague-chain boost, frost-lance wake pulses, ice-ring orbit chills, smarter chains, seeker prism shards, coal cannon scaling, mine broadside drops, golden prism shards, collector-beam gem pulls, and chaos shrapnel pulsing.
+- Updated `GDD-COMPLETE.md` with the current three-layer interaction model and interaction table.
+- Expanded synergy tests to cover active flag-count interactions.
+
+**Why**: Runs were still collapsing into a small number of broad themes. This makes individual trait combinations mutate bullet rules so different loadouts inside the same theme can feel mechanically different.
+
+**Verification**:
+- `npm test` passes in `game`.
+- `npm run build` passes in `game` with only the existing Vite chunk-size warning.
+
+**What's next**: Playtest named combinations from the GDD table, then tune noisy effects and add player-facing partial synergy/codex UI so players can intentionally chase these rule collisions.
+
+---
+
 ## 2026-05-06 — Add First Isaac-Style Synergy Behavior Pass
 
 **What**: Added a checkpoint for the first active synergy behavior pass after the publishing-ready state.
