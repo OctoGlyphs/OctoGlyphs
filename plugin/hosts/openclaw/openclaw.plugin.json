@@ -2,7 +2,7 @@
     "id": "octoglyphs",
     "name": "OctoGlyphs",
     "description": "A private AI-work Tamagotchi sidecar that feeds from safe OpenClaw activity metadata without reading prompts, responses, code, files, diffs, or terminal output.",
-    "version": "0.1.2",
+    "version": "0.1.3",
     "activation": {
         "onStartup": true
     },

@@ -1,5 +1,27 @@
 # OctoGlyphs Devlog
 
+## 2026-05-20 — Remove Bundled Music for ClawHub Publish
+
+**What**: Prepared OpenClaw plugin v0.1.3 after ClawHub still returned a server error with the trimmed v0.1.2 package.
+
+**Changes**:
+- Removed bundled music tracks from the runtime music catalog for the ClawHub/OpenClaw package path.
+- Removed local bundled `octosong*.ogg` files from the game/public asset source and rebuilt OpenClaw public assets without them.
+- Bumped the OpenClaw plugin package and manifest from `0.1.2` to `0.1.3`.
+- Kept the mute/unmute UI assets and music controls so music can be restored later via smaller assets or remote hosting.
+
+**Why**: ClawHub continued failing server-side even after v0.1.2 dropped from about 17.9 MB to about 15.8 MB. Removing bundled music drops the package to about 2.7 MB, safely below the multipart stream limit while preserving gameplay and companion behavior.
+
+**Verification**:
+- `npm --prefix game test` passes.
+- `npm --prefix game run build` passes with only the existing Vite chunk-size warning.
+- `npm --prefix plugin/hosts/openclaw run build` passes.
+- `npm --prefix plugin/hosts/openclaw test` passes.
+- `npm pack --dry-run` in `plugin/hosts/openclaw` reports `octoglyphs-openclaw-plugin-0.1.3.tgz` at about 2.7 MB.
+
+**What's next**: Commit and push v0.1.3, then retry ClawHub publish from the Mac. After publish succeeds, restore music through smaller compressed tracks or remote hosting from octoglyphs.com/CDN.
+
+---
 ## 2026-05-20 — Trim OpenClaw Package Below ClawHub Limit
 
 **What**: Prepared OpenClaw plugin v0.1.2 after ClawHub v0.1.1 publish failed server-side near the multipart upload size limit.
