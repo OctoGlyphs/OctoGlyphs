@@ -1,5 +1,22 @@
 # OctoGlyphs Devlog
 
+## 2026-05-20 — OpenClaw v0.1.4 restores two bundled songs
+
+### Changed
+- Restored two smaller bundled OpenClaw music tracks: `octosong1.ogg` and `octosong5.ogg`.
+- Re-enabled the runtime music catalog for those two tracks only.
+- Bumped OpenClaw plugin metadata from `0.1.3` to `0.1.4`.
+- Regenerated the OpenClaw package lock after the version bump.
+
+### Why
+- The fully music-free `0.1.3` package was safest for ClawHub size limits, but the music is part of the OctoGlyphs feel.
+- Two tracks should keep the package well below the earlier server-side multipart limit while preserving the companion atmosphere.
+
+### Next
+- Rebuild and verify the OpenClaw package size.
+- If ClawHub accepts `0.1.4`, keep music bundled at this smaller set and consider remote/CDN loading for the full soundtrack later.
+- If ClawHub still fails, fall back to publishing `0.1.3` without bundled music.
+
 ## 2026-05-20 — Remove Bundled Music for ClawHub Publish
 
 **What**: Prepared OpenClaw plugin v0.1.3 after ClawHub still returned a server error with the trimmed v0.1.2 package.

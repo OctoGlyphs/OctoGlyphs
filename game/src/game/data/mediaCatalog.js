@@ -4,6 +4,8 @@ export const BACKGROUND_TRACKS = [
 ];
 
 export const MUSIC_TRACKS = [
+    { key: "music-octosong-1", file: "octosong1.ogg" },
+    { key: "music-octosong-5", file: "octosong5.ogg" }
 ];
 
 export function backgroundUrl(file) {
