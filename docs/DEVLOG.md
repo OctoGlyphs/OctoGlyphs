@@ -1,5 +1,155 @@
 # OctoGlyphs Devlog
 
+## 2026-05-07 — Force Quick Build Bullet Identities
+
+**What**: Made the six quick-build buttons carry visible bullet identity, not just weighted trait selection.
+
+**Changes**:
+- Added preset-family markers to key traits that represent Speed Demon, Heavy Hitter, Fortress, Lucky Prism, Gem Greed, and Magnet Chaos.
+- Added runtime preset-family rules so selected quick builds can force route family, bullet tint, and baseline shot modifiers during Tank Hunt.
+- Speed Demon now forces Current tint and adds speed, shot speed, wake, bounce, and homing support.
+- Heavy Hitter now forces Inkstorm tint and adds damage, broadside, coal growth, and faster firing support.
+- Fortress now forces Shell tint and adds health, guardian/orbit, and freeze support.
+- Lucky Prism now forces Prism tint and adds crit, prism fork, chain, and gem pulse support.
+- Gem Greed now forces gold Treasure tint and adds gem pulse, Hungry Gems, magnet, and luck support.
+- Magnet Chaos now forces pink Chaos tint and adds split, wiggle, bounce, boomerang, and magnet support.
+- Quick preset application now emits the equipped marker trait so live Tank Hunt updates can apply immediately.
+
+**Why**: Ed tested the hybrid quick builds and saw that bullets still did not visibly change color across all six buttons. The previous pass depended too much on organic owned-trait scoring, so if overlapping traits won, visual bullet identity could still collapse. This pass gives each quick build an explicit Isaac-style shooting identity when matching traits are available.
+
+**Verification**:
+- `npm test` passes in `game`.
+- `npm run build` passes in `game` with only the existing Vite chunk-size warning.
+- Hermes host passes `python3 -m py_compile __init__.py octoglyphs_sidecar.py` and `python3 -m unittest discover -s tests`.
+- Latest local and Hermes bundle is `index-Ui1KMYV_.js`.
+
+**What's next**: Test buttons one through six inside an active Tank Hunt. Confirm bullet tint changes immediately, then confirm shape/behavior differences are obvious enough. If any button still feels subtle, add a small active bullet-rules readout to show bounce, homing, split, chain, prism, broadside, and poison values.
+
+---
+
+## 2026-05-07 — Convert Quick Builds Into Hybrid Archetypes
+
+**What**: Kept the convenience of the number-key quick builds while making each preset prefer a distinct bullet/playstyle identity.
+
+**Changes**:
+- Replaced the old pure-stat quick preset labels with six hybrid utility/archetype presets: Speed Demon, Heavy Hitter, Fortress, Lucky Prism, Gem Greed, and Magnet Chaos.
+- Preserved each preset's practical goal: speed, damage, toughness, luck, gem economy, and magnet range.
+- Added style-weighted scoring so presets prefer traits with matching Tank Hunt mechanics when available.
+- Speed Demon now prefers bounce, wake trail, shot speed, backblast, and homing.
+- Heavy Hitter now prefers broadside, lump-of-coal growth, extra projectiles, fire rate, and damage pressure.
+- Fortress now prefers max HP, guardian charges, orbit, freeze, spin, and mines.
+- Lucky Prism now prefers crit chance, prism fork, chain, spectral shots, homing, and luck.
+- Gem Greed now prefers gem pulse, magnet, luck/economy effects, prism economy, and Hungry Gems-style pickup play.
+- Magnet Chaos now prefers split, wiggle, bounce, boomerang, extra projectiles, homing, and magnet range.
+- Updated `GDD-COMPLETE.md` with the hybrid quick-build design rule.
+
+**Why**: Ed liked having an easy way to swap from fast to strong to tanky, but the old presets often selected overlapping stat winners, so bullets could still feel samey. Hybrid scoring keeps the useful one-key swaps while pushing each build toward a visible Isaac-style shooting identity.
+
+**Verification**:
+- `npm test` passes in `game`.
+- `npm run build` passes in `game` with only the existing Vite chunk-size warning.
+- Hermes host passes `python3 -m py_compile __init__.py octoglyphs_sidecar.py` and `python3 -m unittest discover -s tests`.
+- Latest local and Hermes bundle is `index-DweSQGrO.js`.
+
+**What's next**: Ed tested the hybrid presets and reported that bullet colors still did not visibly change across all six buttons. Next pass should make the quick-build identity explicit instead of relying only on whatever owned trait happens to win scoring.
+
+---
+
+## 2026-05-07 — Add Quick Build Hotkeys and Live Trait Pickups
+
+**What**: Made quick build testing faster and made manual trait pickups behave more like Binding of Isaac items.
+
+**Changes**:
+- Added number-key hotkeys 1 through 6 for the six Quick Build presets in the Loadout panel.
+- Labeled quick build buttons with their matching number so the hotkeys are discoverable.
+- Trait pickups now unlock and equip immediately instead of making common traits shop-only discoveries.
+- Replaced traits remain owned; pickup replacement only changes the current slot.
+- Picking up or equipping a trait during an active Tank Hunt now applies its hunt modifiers live so bullets, orbiters, fire rate, speed, gem effects, poison, chain, bounce, and related run stats can change immediately.
+- Expanded live hunt modifier support for weird/run-mod fields such as Anchor Shot, Black-Hole Pearl, Hungry Gems, Echo Shot, and pressure/reward modifiers.
+- Updated `GDD-COMPLETE.md` with the live trait pickup rule and quick build hotkey rule.
+
+**Why**: Ed wanted trait pickups to feel more like Binding of Isaac items. If the player finds a bullet-affecting trait, they should see the octo and current/next run respond immediately instead of only discovering a shop entry. The number hotkeys also make archetype and balance testing much faster.
+
+**Verification**:
+- `npm test` passes in `game`.
+- `npm run build` passes in `game` with only the existing Vite chunk-size warning.
+- Hermes host passes `python3 -m py_compile __init__.py octoglyphs_sidecar.py` and `python3 -m unittest discover -s tests`.
+- Latest local and Hermes bundle is `index-Azri6r-s.js`.
+
+**What's next**: Test pickups during Tank Hunt with obvious bullet-mod traits such as Bubble Gum, Martini, Nunchucks, Trident, Coffee, Evil Eyes, and Wizard Hat. Confirm visual loadout swaps happen immediately and live bullet behavior changes without breaking boss/upgrade overlays.
+
+---
+
+## 2026-05-07 — Add Tank Hunt Replayability Routes and Weird Mutations
+
+**What**: Added a first no-new-art replayability pass so different loadouts create different Tank Hunt routes, upgrade choices, and run stories.
+
+**Changes**:
+- Added archetype route rules for Inkstorm, Abyss, Current, Shell, Prism, and Tide.
+- Routes now bias wave recipes, spawn count, wave cadence, elite pressure, boss toughness, gem drops, and mutation role offers.
+- Added weird Isaac-style mutations: Anchor Shot, Glass Cannon, Vampire Siphon, Black-Hole Pearl, Tiny Octo, Cursed Fork, Hungry Gems, and Boss Magnet.
+- Added boss reward run modifiers: Blood Moon, Treasure Trench, Kraken Pact, Deep Current, and Octo Echo.
+- Added runtime behavior for black-hole pull pulses, Hungry Gem pickup attacks, Vampire Siphon healing, Echo Shot delayed rear shots, and route-aware debug state.
+- Updated `GDD-COMPLETE.md` with the replayability route model and new mutation/reward design rules.
+
+**Why**: The game has strong bullet spectacle, but replayability needs runs to ask different questions. This pass uses existing art and systems to make loadout identity affect route, enemies, rewards, and playstyle instead of only stat scaling.
+
+**Verification**:
+- `npm test` passes in `game`.
+- `npm run build` passes in `game` with only the existing Vite chunk-size warning.
+- Latest local bundle is `index-Cptdy7uQ.js`.
+
+**What's next**: Playtest each archetype using strongest/debug loadouts and normal loadouts. Watch whether routes feel distinct without feeling unfair, then tune route multipliers and weird mutation rarity.
+
+---
+
+## 2026-05-07 — Add Fair Enemy Speed Contract
+
+**What**: Clamped enemy and boss movement scaling around the player's actual swim speed so high-pressure hunts stay threatening without becoming impossible to escape.
+
+**Changes**:
+- Added player-relative speed helpers in `IncubationScene.js` for current octo swim speed, fair enemy cruise speed, and fair dash speed.
+- Normal enemy cruise movement is now capped by role relative to the player's current loadout speed.
+- Difficulty event speed boosts are bounded instead of multiplying harder against fast player builds.
+- Pressure-breaker enemies keep their entry armor and close spawns, but their raw speed boost is softened.
+- Dart and pouncer bursts now use short dash caps instead of unbounded multipliers.
+- Shark, red shark, octo, and mummy boss burst speeds now use capped readable-attack rules instead of unrestricted player-speed multipliers.
+- Updated `GDD-COMPLETE.md` with the fair enemy speed contract.
+
+**Why**: Projectile-pressure scaling made the game harder, but fast pressure enemies could feel unfair if they exceeded the octo's swim speed as continuous pursuit. Speed traits should remain meaningful escape tools. Enemies may outrun the player only during telegraphed, committed attacks with recovery.
+
+**Verification**:
+- `npm test` passes in `game`.
+- `npm run build` passes in `game` with only the existing Vite chunk-size warning.
+
+**What's next**: Playtest fastest and strongest loadouts. Confirm normal enemies can pressure but not permanently outrun the octo, and bosses feel dodgeable because their fast moves are locked attacks rather than homing chase.
+
+---
+
+## 2026-05-07 — Add Projectile-Pressure Difficulty Scaling
+
+**What**: Added live projectile-pressure scaling so extreme bullet-storm builds create smarter enemy pressure instead of trivial screen denial.
+
+**Changes**:
+- Added `getLiveProjectilePressure()` to measure active bullets, mines, orbiters, fire rate, split, pierce, bounce, homing, chain, broadside, prism forks, damage, synergies, and interactions.
+- Difficulty pressure now uses the higher of starting loadout power and live projectile pressure.
+- Added pressure tiers that shorten high-power breathing lulls and increase wave spawn budget without nerfing player bullets.
+- Added pressure-breaker enemies that spawn inside the visible arena, briefly gain entry armor, move faster, and force the player to reposition.
+- Increased enemy HP/speed scaling at high pressure, especially for bosses.
+- Added boss minimum-presence armor so high-DPS builds cannot delete bosses before at least one pattern matters.
+- Added pressure debug values to the Tank Hunt state payload.
+- Updated `GDD-COMPLETE.md` with the projectile-pressure model.
+
+**Why**: Strongest trait combos were fun visually but created full-screen denial. Enemies and bosses died at the edge of the arena before the player needed to move, so the correct fix is pressure-aware enemy behavior rather than simply nerfing bullet spectacle.
+
+**Verification**:
+- `npm test` passes in `game`.
+- `npm run build` passes in `game` with only the existing Vite chunk-size warning.
+
+**What's next**: Playtest the strongest trait combo button and watch whether pressure-breakers create movement without feeling unfair. Tune entry armor duration, spawn distance, and pressure thresholds based on feel.
+
+---
+
 ## 2026-05-07 — Add Trait Interaction Rule Collisions
 
 **What**: Added the deeper Binding of Isaac-style trait interaction layer on top of exact synergies and theme synergies.
@@ -1812,3 +1962,50 @@ Next: test wave 5 red shark against normal and high-speed loadouts. If it still 
 **Verification**: `npm run typecheck` and `npm run build:plugin && node tests/openclawAdapter.test.mjs` pass in the OctoGlyphs release plugin checkout.
 
 **What's next**: User should `git pull`, rebuild/repack, reinstall with `--force`, restart the gateway, run `/octoglyphs`, and click the new `http://localhost:18790/octoglyphs` link. Confirm the page loads and connected tank windows increments.
+
+## 2026-05-07 — Quick-build live style stacking fix
+
+### Changed
+- Fixed Tank Hunt quick-build switching so presets replace the previous live preset identity instead of stacking every style bonus together.
+- Added explicit live quick-preset event handling separate from normal trait equip handling.
+- Added reversible preset modifier tracking on `tankRunStats` so multipliers and additive style mods are removed before a new preset is applied.
+- Clamped live trait and preset updates after application so mid-hunt switching cannot exceed starting safety caps.
+- Synced rebuilt game bundle into the Hermes plugin folder.
+
+### Why
+- Scrolling through presets one through six could make the octo feel increasingly overpowered because each preset marker was being applied like another trait pickup.
+- The intended behavior is that Speed Demon, Heavy Hitter, Fortress, Lucky Prism, Gem Greed, and Magnet Chaos are alternate styles, not cumulative buffs.
+
+### Verified
+- `cd /home/crai/Desktop/octoglyphs-release/game && npm test && npm run build`
+- `cd /home/crai/Desktop/octoglyphs-release/plugin/hosts/hermes && python3 -m py_compile __init__.py octoglyphs_sidecar.py && python3 -m unittest discover -s tests`
+
+### Next
+- Test in Hermes by starting a Hunt and pressing one through six repeatedly. Bullet color and style should change, but power should not climb every time.
+- Add an active bullet rules readout if tuning still feels unclear.
+
+## Live Hunt Loadout Rebuild
+
+Changed: pressing quick builds or equipping traits during active Tank Hunt now rebuilds persistent loadout effects from clean base, then reapplies existing temporary mutations and boss rewards. Gems, XP, level, HP, wave state, and chosen run history are preserved.
+
+Why: switching one through six could leave old loadout stats behind or only partially apply new traits, making it feel like presets were stacking. This makes quick-build swaps act like clean transformations instead of cumulative buffs.
+
+Next: test active Hunt by leveling once or twice, switching one through six repeatedly, and confirming bullet style changes without runaway power gain.
+
+## OpenClaw 0.1.1 ClawHub Candidate
+
+Changed: bumped OpenClaw plugin manifest to 0.1.1 and rebuilt the OpenClaw public bundle from the latest Tank Hunt quick-build/loadout rebuild work.
+
+Why: the OctoGlyphs GitHub account is now old enough for ClawHub, so the package needs a clean versioned candidate with current assets and gameplay fixes included.
+
+Verified: game npm test, game npm run build, Hermes py_compile and unittest suite, OpenClaw typecheck, OpenClaw adapter test, and npm pack all pass.
+
+Next: commit these changes, push to GitHub, install ClawHub CLI if needed, run ClawHub dry-run publish for OctoGlyphs/OctoGlyphs 0.1.1, then publish for real if dry-run succeeds.
+
+## Commit c0bdadb — Prepare OctoGlyphs OpenClaw 0.1.1
+
+Changed: committed the live Hunt clean-rebuild quick-build work, OpenClaw 0.1.1 manifest bump, rebuilt Hermes/OpenClaw public bundles, and docs updates for the ClawHub candidate.
+
+Why: OctoGlyphs needs the latest non-stacking one-through-six Hunt behavior and packaged assets in GitHub before ClawHub can publish a working OpenClaw plugin.
+
+Next: push to GitHub, pull on the ClawHub-capable machine, run the ClawHub dry-run publish, then publish for real if validation passes.

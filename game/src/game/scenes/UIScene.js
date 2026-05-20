@@ -44,12 +44,54 @@ const SORT_OPTIONS = [
 ];
 
 const QUICK_PRESETS = [
-    { id: "fastest", label: "Fastest", stat: "swimSpeed", hint: "highest swim speed" },
-    { id: "luckiest", label: "Luckiest", stat: "luck", hint: "highest luck" },
-    { id: "strongest", label: "Strongest", stat: "damage", hint: "highest damage" },
-    { id: "toughest", label: "Toughest", stat: "armor", hint: "highest armor" },
-    { id: "richest", label: "Gem Farm", stat: "gemValue", hint: "highest gem value" },
-    { id: "magnet", label: "Magnet", stat: "magnetRange", hint: "highest pickup range" }
+    {
+        id: "speed-demon",
+        label: "Speed Demon",
+        stat: "swimSpeed",
+        family: "current",
+        hint: "fast + bounce/wake shots",
+        style: { swimSpeed: 10, family: 18, presetFamilyCurrent: 30, shotSpeed: 7, bounce: 10, wakeTrail: 10, homing: 7, backblast: 5, fireDelay: 4 }
+    },
+    {
+        id: "heavy-hitter",
+        label: "Heavy Hitter",
+        stat: "damage",
+        family: "inkstorm",
+        hint: "damage + broadside pressure",
+        style: { damageBonus: 10, family: 18, presetFamilyInkstorm: 30, broadside: 10, lumpOfCoal: 9, fireDelay: 7, extraProjectiles: 7, backblast: 5, shotSpeed: 4 }
+    },
+    {
+        id: "fortress",
+        label: "Fortress",
+        stat: "armor",
+        family: "shell",
+        hint: "armor + orbit/guardian control",
+        style: { maxHp: 10, family: 18, presetFamilyShell: 30, guardianCharges: 10, orbit: 9, freeze: 8, spinPower: 7, inkMines: 7, armor: 8 }
+    },
+    {
+        id: "lucky-prism",
+        label: "Lucky Prism",
+        stat: "luck",
+        family: "prism",
+        hint: "luck + fork/chain crits",
+        style: { critChance: 10, family: 18, presetFamilyPrism: 30, prismFork: 10, chain: 9, homing: 6, spectral: 5, luckBonus: 8, gemPulse: 4 }
+    },
+    {
+        id: "gem-greed",
+        label: "Gem Greed",
+        stat: "gemValue",
+        family: "prism",
+        hint: "gems + pickup damage economy",
+        style: { gemPulse: 11, family: 14, presetFamilyTreasure: 30, magnetRange: 8, luckBonus: 5, critChance: 4, prismFork: 5, nextXpMult: 6, hungryGems: 10 }
+    },
+    {
+        id: "magnet-chaos",
+        label: "Magnet Chaos",
+        stat: "magnetRange",
+        family: "tide",
+        hint: "magnet + split/wiggle chaos",
+        style: { magnetRange: 9, family: 12, presetFamilyChaos: 30, split: 11, wiggle: 11, bounce: 8, boomerang: 8, extraProjectiles: 7, homing: 4 }
+    }
 ];
 
 const PRESET_SLOTS = ["body", "eyes", "hat", "clothes", "boost"];
@@ -75,6 +117,7 @@ export class UIScene extends Scene {
         this.activeEvolveRarity = "common";
         this.evolveSelected = [];
         this.huntCharge = null;
+        this.quickPresetHotkeysBound = false;
     }
 
     create() {
@@ -138,10 +181,14 @@ export class UIScene extends Scene {
         });
 
         document.addEventListener("keydown", event => {
-            if (event.key !== "Escape") return;
-            document.getElementById("shop-panel")?.classList.remove("is-open");
-            document.getElementById("loadout-panel")?.classList.remove("is-open");
-            document.getElementById("evolve-panel")?.classList.remove("is-open");
+            if (event.key === "Escape") {
+                document.getElementById("shop-panel")?.classList.remove("is-open");
+                document.getElementById("loadout-panel")?.classList.remove("is-open");
+                document.getElementById("evolve-panel")?.classList.remove("is-open");
+                return;
+            }
+
+            this.handleQuickPresetHotkey(event);
         });
 
 
@@ -404,6 +451,79 @@ export class UIScene extends Scene {
         return direct + Number(huntScores[stat] || 0);
     }
 
+    quickPresetScore(asset, preset) {
+        if (!asset || !preset) return 0;
+        const primaryScore = this.assetSortScore(asset, preset.stat) * 100;
+        const styleScore = this.quickPresetStyleScore(asset, preset.style);
+        const familyScore = this.quickPresetFamilyScore(asset, preset);
+        const rarityScore = (RARITY_ORDER[asset.rarity] || 0) * 0.05;
+        return primaryScore + styleScore + familyScore + rarityScore;
+    }
+
+    quickPresetStyleScore(asset, style = {}) {
+        if (!asset || !style) return 0;
+        const statMods = asset.statMods || {};
+        const huntMods = asset.huntMods || {};
+        let score = 0;
+
+        for (const [key, weight] of Object.entries(style)) {
+            if (key === "family" || key.startsWith("presetFamily")) continue;
+
+            const huntValue = huntMods[key];
+            const statValue = statMods[key];
+
+            if (typeof huntValue === "number") {
+                if (["fireDelay", "nextXpMult"].includes(key)) {
+                    score += Math.max(0, 1 - huntValue) * weight;
+                } else if (["swimSpeed", "shotSpeed", "magnetRange", "shotLifetime"].includes(key)) {
+                    score += Math.max(0, huntValue - 1) * weight;
+                } else {
+                    score += Math.max(0, huntValue) * weight;
+                }
+            } else if (huntValue) {
+                score += weight;
+            }
+
+            if (typeof statValue === "number") {
+                score += Math.max(0, statValue) * weight;
+            }
+        }
+
+        return score;
+    }
+
+    quickPresetFamilyScore(asset, preset) {
+        const family = preset?.family;
+        if (!asset || !family) return 0;
+        const huntMods = asset.huntMods || {};
+        const statMods = asset.statMods || {};
+        const name = `${asset.name || ""} ${asset.id || ""}`.toLowerCase();
+        let score = huntMods.family === family ? 24 : 0;
+
+        if (family === "current") {
+            if ((statMods.swimSpeed || 0) > 0) score += 5;
+            if (huntMods.wakeTrail || huntMods.bounce || huntMods.homing || huntMods.shotSpeed || huntMods.boomerang) score += 8;
+            if (name.includes("aqua") || name.includes("teal") || name.includes("lime") || name.includes("propeller") || name.includes("rocket") || name.includes("wing")) score += 8;
+        } else if (family === "inkstorm") {
+            if ((statMods.damage || 0) > 0) score += 5;
+            if (huntMods.broadside || huntMods.lumpOfCoal || huntMods.extraProjectiles || huntMods.fireDelay || huntMods.backblast) score += 8;
+            if (name.includes("magma") || name.includes("red") || name.includes("orange") || name.includes("laser") || name.includes("angry") || name.includes("nunchuck") || name.includes("trident")) score += 8;
+        } else if (family === "shell") {
+            if ((statMods.armor || 0) > 0) score += 5;
+            if (huntMods.maxHp || huntMods.guardianCharges || huntMods.orbit || huntMods.freeze || huntMods.spinPower || huntMods.inkMines) score += 8;
+            if (name.includes("metal") || name.includes("charcoal") || name.includes("gray") || name.includes("helmet") || name.includes("armor") || name.includes("shell")) score += 8;
+        } else if (family === "prism") {
+            if ((statMods.luck || 0) > 0 || (statMods.gemValue || 0) > 0) score += 5;
+            if (huntMods.critChance || huntMods.prismFork || huntMods.chain || huntMods.gemPulse || huntMods.hungryGems || huntMods.luckBonus) score += 8;
+            if (name.includes("gold") || name.includes("rainbow") || name.includes("crown") || name.includes("crypto") || name.includes("diamond") || name.includes("all seeing")) score += 8;
+        } else if (family === "tide") {
+            if (huntMods.split || huntMods.wiggle || huntMods.bounce || huntMods.boomerang || huntMods.extraProjectiles || huntMods.orbit || huntMods.pierce) score += 8;
+            if (name.includes("bubble") || name.includes("pepe") || name.includes("clown") || name.includes("crazy") || name.includes("martini") || name.includes("sushi")) score += 8;
+        }
+
+        return score;
+    }
+
     assetStateRank(asset, total) {
         if (isUnlocked(this.save, asset.id)) return 0;
         if (!this.isDiscovered(asset)) return 3;
@@ -599,13 +719,24 @@ export class UIScene extends Scene {
         title.textContent = "Quick builds";
         root.appendChild(title);
 
-        for (const preset of QUICK_PRESETS) {
+        for (const [index, preset] of QUICK_PRESETS.entries()) {
             const button = document.createElement("button");
             button.className = "preset-button";
-            button.innerHTML = `<strong>${preset.label}</strong><small>${preset.hint}</small>`;
+            button.innerHTML = `<strong>${index + 1}. ${preset.label}</strong><small>${preset.hint}</small>`;
             button.addEventListener("click", () => this.applyQuickPreset(preset));
             root.appendChild(button);
         }
+    }
+
+    handleQuickPresetHotkey(event) {
+        if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) return;
+        const target = event.target;
+        if (target?.closest?.("input, textarea, select, [contenteditable='true']")) return;
+        const index = Number(event.key) - 1;
+        if (!Number.isInteger(index) || index < 0 || index >= QUICK_PRESETS.length) return;
+
+        event.preventDefault();
+        this.applyQuickPreset(QUICK_PRESETS[index]);
     }
 
     applyQuickPreset(preset) {
@@ -615,7 +746,12 @@ export class UIScene extends Scene {
         for (const slot of PRESET_SLOTS) {
             const candidates = ownedAssetsForSlot(this.save, slot);
             if (candidates.length === 0) continue;
-            candidates.sort((a, b) => this.compareAssetsForSort(a, b, preset.stat, false));
+            candidates.sort((a, b) => {
+                const scoreA = this.quickPresetScore(a, preset);
+                const scoreB = this.quickPresetScore(b, preset);
+                if (scoreA !== scoreB) return scoreB - scoreA;
+                return this.compareAssetsForSort(a, b, preset.stat, false);
+            });
             const best = candidates[0];
             if (best && this.save.loadout[slot] !== best.id) {
                 this.save.loadout[slot] = best.id;
@@ -639,8 +775,16 @@ export class UIScene extends Scene {
         this.renderInventory();
         this.renderLoadout();
         this.refreshStatsReadout();
-        this.game.events.emit("octoglyphs:equip", null);
+        this.game.events.emit("octoglyphs:quick-preset", this.getQuickPresetFamilyKey(preset));
         this.game.events.emit("octoglyphs:save-changed");
+    }
+
+    getQuickPresetFamilyKey(preset) {
+        if (!preset?.style) return null;
+        const markerKey = Object.keys(preset.style).find(key => key.startsWith("presetFamily"));
+        if (!markerKey) return null;
+        const raw = markerKey.replace("presetFamily", "");
+        return raw.charAt(0).toLowerCase() + raw.slice(1);
     }
 
     renderLoadoutSummary(summaryRoot) {

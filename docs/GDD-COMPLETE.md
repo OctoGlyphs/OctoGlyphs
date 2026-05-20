@@ -99,6 +99,15 @@ Pierce, split, bounce, homing, poison, orbit, fire rate, damage, projectile coun
 
 All mutations have distinct tint colors so the player can visually see their build. Modifiers stack — homing + wiggle creates seeking sine-wave bullets, pierce + freeze creates a slow-field shotgun, boomerang + split creates returning shrapnel arcs.
 
+#### 3.3.2.0 Trait Pickups as Live Isaac-Style Items
+Trait discoveries now behave more like run-changing pickups instead of delayed shop-only unlocks. When the player manually swims into a trait signal, the trait is unlocked, equipped into its slot, and the previous slot item remains owned rather than destroyed.
+
+Outside Tank Hunt, the result is immediate visual/loadout feedback and the next Hunt starts with the new trait rules. During Tank Hunt, the pickup also applies its hunt modifiers live so bullet behavior, fire rate, projectile geometry, orbiters, speed, gems, poison, chain, bounce, or other supported effects can change immediately in the current run. The Hunt route itself may shift its dominant family for future weighting/debug identity, but the current arena route should not hard-reset mid-wave.
+
+Design rule: picking up a trait should feel like finding an Isaac item. It can reshape the octo now, but it must never delete the replaced trait from the player's permanent collection.
+
+Quick build presets are also keyboard-addressable with number keys 1 through 6 so testing and loadout iteration is fast. The six quick builds are hybrid utility/archetype presets rather than pure stat sorters: Speed Demon keeps the fast-build goal but prefers Current-style bounce/wake shots, Heavy Hitter keeps the damage goal but prefers Boiling Reef broadside pressure, Fortress keeps the tank goal but prefers Shell orbit/guardian control, Lucky Prism keeps the luck goal but prefers crit/fork/chain shots, Gem Greed keeps the economy goal but prefers gem-pulse pickup play, and Magnet Chaos keeps the magnet goal but prefers split/wiggle/bounce chaos. Each preset also has explicit preset-family marker traits. When a marked trait is equipped, Tank Hunt forces a matching bullet tint and baseline shot modifiers so the six buttons produce visible Isaac-style shooting identities instead of relying only on organic stat scoring. This preserves the easy fast/strong/tank/gem swaps while making bullets and route identity visibly change.
+
 #### 3.3.2.1 Current Trait Interaction Model
 The implementation now uses three layers of loadout interaction:
 
@@ -128,6 +137,66 @@ Current pairwise/triple interactions:
 | Black Ice | Freeze + Fear | Frozen enemies panic as control effects overlap |
 
 Starting loadouts also set a dominant baseline weapon identity before full theme synergy activates. This prevents weak two-item builds from feeling identical to the default octo.
+
+#### 3.3.2.2 Projectile-Pressure Difficulty Scaling
+High-power builds are allowed to create spectacular bullet storms, but the hunt no longer balances those runs only through enemy HP. The game tracks live **projectile pressure** from active bullets, mines, orbiters, fire rate, split, pierce, bounce, homing, chain, broadside, prism forks, damage bonuses, active synergies, and active interactions.
+
+Projectile pressure feeds three difficulty tiers:
+
+| Tier | Trigger | Response |
+|------|---------|----------|
+| 0 | Normal loadouts | Standard wave recipes, normal breathing lulls |
+| 1 | Moderate projectile control | Slightly faster pressure scaling |
+| 2 | Heavy screen denial | Shorter lulls, pressure-breaker enemies, higher spawn budget |
+| 3 | Extreme bullet storms | Stronger pressure-breakers, more persistent waves, boss anti-melt armor |
+
+Pressure-breaker enemies do not simply have huge HP. They spawn closer inside the visible arena and briefly gain entry armor so they cannot be deleted at the edge of the screen. Their raw chase speed is still bounded by the fair speed contract below, so pressure scaling creates movement decisions without making escape impossible. Bosses also receive a short minimum-presence armor window at high projectile pressure so a broken build still sees at least one boss pattern before the reward screen.
+
+**Fair speed contract:** enemy speed must scale around the player's actual current swim speed, including equipped traits and in-hunt speed upgrades.
+
+| Movement Type | Rule |
+|---------------|------|
+| Normal chase/cruise | Usually capped below player swim speed, roughly 72-96% depending on role |
+| Snipers/blockers/herders | Slower than the player because their threat comes from positioning or projectiles |
+| Dart/pouncer bursts | May briefly exceed player speed, but only as short committed attacks |
+| Boss charges/lunges | May exceed player speed, but require wind-up, locked direction, and recovery |
+| Whole-wave events | Must not multiply against player speed so speed traits remain valid escape tools |
+
+Core rule: enemies may be faster than the player only as readable attacks, never as continuous pursuit.
+
+Design goal: keep the joy of absurd Isaac-style bullet storms while preventing them from becoming full-screen denial that removes all movement decisions.
+
+
+#### 3.3.2.3 Replayability Pass: Archetype Routes and Weird Mutations
+Tank Hunt now treats each starting archetype as a lightweight run route, not only a bullet color or mutation bias. No new art is required; routes reuse existing enemies, recipes, bosses, gem rules, and bullet tints.
+
+| Archetype | Route | Run Identity |
+|-----------|-------|--------------|
+| **Inkstorm** | Boiling Reef | Faster aggressive swarms, more elite pressure, more offense offers. |
+| **Abyss** | Abyss Trench | Slower heavier control route with deep swarms, siege waves, poison/fear leaning. |
+| **Current** | Riptide Run | Faster wave cadence, charger/flanker pressure, mobility-heavy choices. |
+| **Shell** | Fortress Glass | Tankier fewer waves, more elite/body-block pressure, defense/control choices. |
+| **Prism** | Treasure Bloom | Better gem economy, utility-heavy choices, more flanker/predator target priority. |
+| **Tide** | Open Tide | Balanced mixed route for starter/unclassified builds. |
+
+Route rules affect recipe selection, spawn count, wave interval, elite chance, boss toughness, gem drops, and mutation role weighting. This makes different persistent loadouts feel like different runs before the first level-up.
+
+New Isaac-style weird mutations add tradeoffs and run stories without new art:
+
+| Mutation | Family | Effect |
+|----------|--------|--------|
+| **Anchor Shot** | Shell | Slower, heavier shots gain size, damage, pierce, and control identity. |
+| **Glass Cannon** | Inkstorm | Major damage/fire-rate boost at cost of one maximum heart. |
+| **Vampire Siphon** | Abyss | Periodic kill-count healing creates sustain builds. |
+| **Black-Hole Pearl** | Prism | Every several shots creates a pull pulse that drags enemies inward. |
+| **Tiny Octo** | Current | Smaller hitbox and faster swim at cost of one maximum heart. |
+| **Cursed Fork** | Prism | More forks and splits, but future waves gain extra elite pressure. |
+| **Hungry Gems** | Prism | Gem pickups lash nearby enemies, turning collection into offense. |
+| **Boss Magnet** | Tide | Bosses become meaner, but rewards improve. |
+
+Boss rewards are also shifting from modest stat bumps toward run modifiers. New signals such as Blood Moon, Treasure Trench, Kraken Pact, Deep Current, and Octo Echo change future wave pressure, reward value, cadence, or shot behavior.
+
+Design rule: replayability should come from different questions per run, not only bigger numbers. A run can ask the player to manage speed, poison, gem collection, elite pressure, boss risk, or projectile geometry using the same existing asset library.
 
 #### 3.3.3 Enemy Behavior Roles
 Enemies are not all the same "chase the player in a straight line" behavior:

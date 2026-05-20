@@ -32,11 +32,11 @@ const TANK_ENEMY_TYPES = [
 ];
 
 const TANK_BOSS_TYPES = [
-    { key: "tank-boss-blue-shark", hp: 38, speed: 78, scale: 2.25, gems: 9, behavior: "boss", facingOffset: -90, flipX: false, frames: 4, framePath: "./assets/generated/tank-enemies/tank-boss-blue-shark/frame_00.png", fixedRotation: true },
-    { key: "tank-boss-red-shark", hp: 42, speed: 86, scale: 2.35, gems: 10, behavior: "boss", facingOffset: -90, flipX: false, frames: 12, framePath: "./assets/generated/tank-enemies/tank-boss-red-shark/frame_00.png", fixedRotation: true },
-    { key: "tank-boss-mummy-shark", hp: 48, speed: 70, scale: 2.45, gems: 11, behavior: "boss", facingOffset: -90, flipX: false, frames: 13, framePath: "./assets/generated/tank-enemies/tank-boss-mummy-shark/frame_00.png", fixedRotation: true },
-    { key: "tank-boss-halloween-small-1", hp: 44, speed: 92, scale: 2.15, gems: 10, behavior: "boss", facingOffset: -90, flipX: false, frames: 20, framePath: "./assets/generated/tank-enemies/tank-boss-halloween-small-1/frame_00.png", fixedRotation: true },
-    { key: "tank-boss-halloween-small-2", hp: 50, speed: 98, scale: 2.22, gems: 11, behavior: "boss", facingOffset: -90, flipX: false, frames: 16, framePath: "./assets/generated/tank-enemies/tank-boss-halloween-small-2/frame_00.png", fixedRotation: true },
+    { key: "tank-boss-blue-shark", hp: 38, speed: 78, scale: 2.25, gems: 9, behavior: "boss", facingOffset: -90, flipX: false, frames: 4, framePath: "./assets/generated/tank-enemies/tank-boss-blue-shark/frame_00.png" },
+    { key: "tank-boss-red-shark", hp: 42, speed: 86, scale: 2.35, gems: 10, behavior: "boss", facingOffset: -90, flipX: false, frames: 12, framePath: "./assets/generated/tank-enemies/tank-boss-red-shark/frame_00.png" },
+    { key: "tank-boss-mummy-shark", hp: 48, speed: 70, scale: 2.45, gems: 11, behavior: "boss", facingOffset: -90, flipX: false, frames: 13, framePath: "./assets/generated/tank-enemies/tank-boss-mummy-shark/frame_00.png" },
+    { key: "tank-boss-halloween-small-1", hp: 44, speed: 92, scale: 2.15, gems: 10, behavior: "boss", facingOffset: -90, flipX: false, frames: 20, framePath: "./assets/generated/tank-enemies/tank-boss-halloween-small-1/frame_00.png" },
+    { key: "tank-boss-halloween-small-2", hp: 50, speed: 98, scale: 2.22, gems: 11, behavior: "boss", facingOffset: -90, flipX: false, frames: 16, framePath: "./assets/generated/tank-enemies/tank-boss-halloween-small-2/frame_00.png" },
     { key: "halloween-holloween1", hp: 52, speed: 82, scale: 1.58, gems: 12, behavior: "boss", facingOffset: 0, flipX: false, frames: 8, fixedRotation: true },
     { key: "halloween-holloween2", hp: 56, speed: 88, scale: 1.62, gems: 12, behavior: "boss", facingOffset: 0, flipX: false, frames: 8, fixedRotation: true },
     { key: "halloween-holloween3", hp: 60, speed: 78, scale: 1.66, gems: 13, behavior: "boss", facingOffset: 0, flipX: false, frames: 8, fixedRotation: true },
@@ -53,6 +53,15 @@ const GEM_COLLECTION_GRACE_MS = 2600;
 const GEM_SPAWN_REVEAL_MS = 2400;
 const GEM_SPAWN_MIN_ALPHA = 0.72;
 const GEM_PRIMITIVE_DEPTH = 34;
+const PRESET_FAMILY_RULES = {
+    current: { label: "Speed Demon", routeFamily: "current", tint: 0x72f6ff, mods: { shotSpeed: 1.16, swimSpeed: 1.08, wakeTrail: 1, bounce: 1, homing: 1 } },
+    inkstorm: { label: "Heavy Hitter", routeFamily: "inkstorm", tint: 0xff8f46, mods: { damageBonus: 1, broadside: 1, lumpOfCoal: 1, fireDelay: 0.92 } },
+    shell: { label: "Fortress", routeFamily: "shell", tint: 0xb7ecff, mods: { maxHp: 1, guardianCharges: 1, orbit: 1, freeze: 1 } },
+    prism: { label: "Lucky Prism", routeFamily: "prism", tint: 0xffa7ff, mods: { critChance: 0.08, prismFork: 1, chain: 1, gemPulse: 1 } },
+    treasure: { label: "Gem Greed", routeFamily: "prism", tint: 0xffd700, mods: { gemPulse: 2, hungryGems: 1, magnetRange: 1.14, luckBonus: 0.08 } },
+    chaos: { label: "Magnet Chaos", routeFamily: "tide", tint: 0xff88cc, mods: { split: 1, wiggle: 1, bounce: 1, boomerang: 1, magnetRange: 1.12 } }
+};
+const PRESET_MULTIPLY_KEYS = new Set(["fireDelay", "shotSpeed", "swimSpeed", "magnetRange"]);
 
 // --- Wave Recipe System ---
 // Each recipe defines enemy composition, spawn count modifier, speed modifier, and spawn interval modifier.
@@ -152,12 +161,15 @@ const TANK_WAVE_RECIPES = [
     }
 ];
 
-function pickWaveRecipe(wave) {
+function pickWaveRecipe(wave, family = "tide") {
     // Boss prep wave always before boss waves
     if (wave % TANK_BOSS_INTERVAL === TANK_BOSS_INTERVAL - 1) {
         return TANK_WAVE_RECIPES.find(r => r.id === "boss_prep");
     }
     const available = TANK_WAVE_RECIPES.filter(r => r.minWave <= wave && r.id !== "boss_prep");
+    const route = TANK_ARCHETYPE_RUN_RULES[family] || TANK_ARCHETYPE_RUN_RULES.tide;
+    const routeRecipes = available.filter(r => route.recipes.includes(r.id));
+    if (routeRecipes.length > 0 && PhaserMath.Between(1, 100) <= 68) return Utils.Array.GetRandom(routeRecipes);
     return Utils.Array.GetRandom(available);
 }
 
@@ -243,7 +255,15 @@ const TANK_MUTATION_ROLES = {
     chain: "offense",
     fear: "control",
     freeze: "control",
-    spectral: "utility"
+    spectral: "utility",
+    anchor_shot: "control",
+    glass_cannon: "offense",
+    vampire_siphon: "defense",
+    black_hole_pearl: "control",
+    tiny_octo: "mobility",
+    cursed_fork: "offense",
+    hungry_gems: "utility",
+    boss_magnet: "utility"
 };
 const TANK_ARCHETYPES = {
     inkstorm: { label: "Inkstorm", bulletKey: "tank-bullet-fire", tint: 0xff8f46 },
@@ -252,6 +272,15 @@ const TANK_ARCHETYPES = {
     shell: { label: "Shell", bulletKey: "tank-bullet-ice", tint: 0xb7ecff },
     prism: { label: "Prism", bulletKey: "tank-bullet-ink", tint: 0xffa7ff },
     tide: { label: "Tide", bulletKey: "tank-bullet", tint: 0xaef7ff }
+};
+
+const TANK_ARCHETYPE_RUN_RULES = {
+    inkstorm: { routeLabel: "Boiling Reef", recipes: ["swarm", "blitz", "mixed_assault"], countMult: 1.14, intervalMult: 0.9, eliteBonus: 8, mutationBias: ["offense", "offense", "mobility"], bossHpMult: 1.08 },
+    abyss: { routeLabel: "Abyss Trench", recipes: ["deep_swarm", "flanker_ambush", "siege"], countMult: 0.92, intervalMult: 1.08, eliteBonus: 4, mutationBias: ["control", "offense", "utility"], bossHpMult: 1.16 },
+    current: { routeLabel: "Riptide Run", recipes: ["charger_rush", "blitz", "flanker_ambush"], countMult: 0.96, intervalMult: 0.86, eliteBonus: 6, mutationBias: ["mobility", "offense", "utility"], bossHpMult: 1.04 },
+    shell: { routeLabel: "Fortress Glass", recipes: ["tank_wall", "siege", "mixed_assault"], countMult: 0.82, intervalMult: 1.18, eliteBonus: 10, mutationBias: ["defense", "control", "offense"], bossHpMult: 1.24 },
+    prism: { routeLabel: "Treasure Bloom", recipes: ["mixed_assault", "flanker_ambush", "predator_pack"], countMult: 1.02, intervalMult: 1.0, eliteBonus: 5, mutationBias: ["utility", "offense", "utility"], bossHpMult: 1.0, gemDropBonus: 0.14 },
+    tide: { routeLabel: "Open Tide", recipes: ["swarm", "mixed_assault", "deep_swarm", "charger_rush"], countMult: 1.0, intervalMult: 1.0, eliteBonus: 0, mutationBias: ["offense", "defense", "utility"], bossHpMult: 1.0 }
 };
 const TANK_BASE_ZOOM = 0.92;
 const TANK_HUNT_ZOOM = 0.68;
@@ -290,13 +319,14 @@ const TANK_STARTING_CAPS = {
     spectral: 1,
     critChance: 0.22,
     damageBonus: 3,
-    bulletScale: 1.45,
+    bulletScale: 1.35,
     swimSpeed: 1.45,
     magnetRange: 1.65,
-    shotSpeed: 820,
-    shotLifetime: 2600,
+    shotSpeed: 780,
+    shotLifetime: 2300,
     nextXpMult: 0.85
 };
+const TANK_MAX_ACTIVE_PLAYER_BULLETS = 54;
 
 const TANK_MUTATION_POOL = [
     { id: "swim_speed", title: "Streamlined", family: "current", rarity: "common", maxRank: 5, desc: rank => `Swim speed +${18 * rank}%${rank >= 2 ? " and stronger wake trail" : ""}`, apply: scene => { scene.tankRunStats.swimSpeed *= 1.18; if (scene.tankRunStats.mutationRanks.swim_speed >= 2) scene.tankRunStats.wakeTrail += 1; } },
@@ -330,7 +360,15 @@ const TANK_MUTATION_POOL = [
     { id: "chain", title: "Chain Lightning", family: "prism", rarity: "rare", maxRank: 3, desc: rank => `Kills jump up to ${Math.min(3, rank + 1)} times with weaker arcs`, apply: scene => { scene.tankRunStats.chain += 1; } },
     { id: "fear", title: "Fear Shot", family: "abyss", rarity: "uncommon", maxRank: 3, desc: rank => `Hit enemies flee for ${0.4 + rank * 0.3}s`, apply: scene => { scene.tankRunStats.fear += 1; } },
     { id: "freeze", title: "Frost Ink", family: "shell", rarity: "uncommon", maxRank: 3, desc: rank => `Hit enemies slow to ${Math.round(100 - rank * 20)}% speed for ${1 + rank * 0.5}s`, apply: scene => { scene.tankRunStats.freeze += 1; } },
-    { id: "spectral", title: "Spectral Ink", family: "abyss", rarity: "rare", maxRank: 1, desc: () => `Bullets ignore walls and travel forever`, apply: scene => { scene.tankRunStats.spectral = 1; } }
+    { id: "spectral", title: "Spectral Ink", family: "abyss", rarity: "rare", maxRank: 1, desc: () => `Bullets ignore walls and travel forever`, apply: scene => { scene.tankRunStats.spectral = 1; } },
+    { id: "anchor_shot", title: "Anchor Shot", family: "shell", rarity: "rare", maxRank: 2, desc: rank => `Slower heavy shots: size, pierce, and knockback rank ${rank}`, apply: scene => { scene.tankRunStats.anchorShot += 1; scene.tankRunStats.shotSpeed *= 0.86; scene.tankRunStats.bulletScale *= 1.16; scene.tankRunStats.pierce += 1; } },
+    { id: "glass_cannon", title: "Glass Cannon", family: "inkstorm", rarity: "rare", maxRank: 1, desc: () => `Huge damage and fire rate, but max hearts -1`, apply: scene => { scene.tankRunStats.damageBonus += 3; scene.tankRunStats.fireDelay *= 0.78; scene.tankRunStats.maxHp = Math.max(2, scene.tankRunStats.maxHp - 1); scene.tankRunStats.hp = Math.min(scene.tankRunStats.hp, scene.tankRunStats.maxHp); scene.configureAutoFireTimer(); } },
+    { id: "vampire_siphon", title: "Vampire Siphon", family: "abyss", rarity: "rare", maxRank: 2, desc: rank => `Every ${Math.max(12, 24 - rank * 5)} kills can restore one heart`, apply: scene => { scene.tankRunStats.vampireSiphon += 1; } },
+    { id: "black_hole_pearl", title: "Black-Hole Pearl", family: "prism", rarity: "rare", maxRank: 2, desc: rank => `Every ${Math.max(5, 10 - rank * 2)}th shot pulls enemies inward`, apply: scene => { scene.tankRunStats.blackHolePearl += 1; scene.tankRunStats.magnetRange *= 1.08; } },
+    { id: "tiny_octo", title: "Tiny Octo", family: "current", rarity: "uncommon", maxRank: 1, desc: () => `Smaller hitbox, faster swim, lower maximum hearts`, apply: scene => { scene.tankRunStats.tinyOcto = 1; scene.tankRunStats.swimSpeed *= 1.22; scene.tankRunStats.maxHp = Math.max(2, scene.tankRunStats.maxHp - 1); scene.tankRunStats.hp = Math.min(scene.tankRunStats.hp, scene.tankRunStats.maxHp); scene.octo?.body?.setCircle?.(18, -18, -18); } },
+    { id: "cursed_fork", title: "Cursed Fork", family: "prism", rarity: "rare", maxRank: 2, desc: rank => `More forks and splits, but future waves get sharper`, apply: scene => { scene.tankRunStats.prismFork += 1; scene.tankRunStats.split += 1; scene.tankRunStats.routeEliteBonus += 4 * rank; } },
+    { id: "hungry_gems", title: "Hungry Gems", family: "prism", rarity: "uncommon", maxRank: 3, desc: rank => `Gem pickups lash nearby enemies at rank ${rank}`, apply: scene => { scene.tankRunStats.hungryGems += 1; scene.tankRunStats.gemPulse += 1; } },
+    { id: "boss_magnet", title: "Boss Magnet", family: "tide", rarity: "rare", maxRank: 1, desc: () => `Bosses arrive meaner but drop richer signals`, apply: scene => { scene.tankRunStats.bossMagnet = 1; scene.tankRunStats.bossPressure += 1; scene.tankRunStats.luckBonus += 0.22; } }
 ];
 
 const TANK_MUTATION_RARITY_WEIGHT = { common: 64, uncommon: 28, rare: 8 };
@@ -432,6 +470,46 @@ const TANK_BOSS_REWARD_POOL = [
             scene.tankRunStats.nextXp = Math.max(scene.tankRunStats.xp + 1, scene.getTankXpForNextLevel());
             scene.tankRunStats.luckBonus += 0.18;
         }
+    },
+    {
+        id: "blood_moon",
+        title: "Blood Moon",
+        family: "inkstorm",
+        rarity: "boss",
+        desc: () => "Future waves spawn more elites. Boss rewards and rare odds improve.",
+        apply: scene => { scene.tankRunStats.routeEliteBonus += 12; scene.tankRunStats.luckBonus += 0.28; scene.tankRunStats.bossRewardGemBonus += 6; }
+    },
+    {
+        id: "treasure_trench",
+        title: "Treasure Trench",
+        family: "prism",
+        rarity: "boss",
+        desc: () => "Enemies drop more gems, but pressure-breakers appear more often.",
+        apply: scene => { scene.tankRunStats.gemDropBonus += 0.22; scene.tankRunStats.pressureBreakerBonus += 1; scene.tankRunStats.luckBonus += 0.12; }
+    },
+    {
+        id: "kraken_pact",
+        title: "Kraken Pact",
+        family: "abyss",
+        rarity: "boss",
+        desc: () => "Gain heavy damage now. Later bosses become tougher and richer.",
+        apply: scene => { scene.tankRunStats.damageBonus += 2; scene.tankRunStats.bossPressure += 1; scene.tankRunStats.bossRewardGemBonus += 8; }
+    },
+    {
+        id: "deep_current",
+        title: "Deep Current",
+        family: "current",
+        rarity: "boss",
+        desc: () => "Waves arrive faster. Gain speed, bounce, and range.",
+        apply: scene => { scene.tankRunStats.waveIntervalMult *= 0.88; scene.tankRunStats.swimSpeed *= 1.12; scene.tankRunStats.bounce += 1; scene.tankRunStats.shotLifetime *= 1.1; }
+    },
+    {
+        id: "octo_echo",
+        title: "Octo Echo",
+        family: "tide",
+        rarity: "boss",
+        desc: () => "A delayed echo adds rear pressure to your shots.",
+        apply: scene => { scene.tankRunStats.echoShot += 1; scene.tankRunStats.backblast += 1; scene.tankRunStats.homing += 1; }
     }
 ];
 
@@ -596,6 +674,7 @@ export class IncubationScene extends Scene {
         this.game.events.on("octoglyphs:start-tank-hunt", () => this.startTankHunt());
         this.game.events.on("octoglyphs:query-hunt-charge", () => this.emitTankHuntCharge());
         this.game.events.on("octoglyphs:equip", assetId => this.equipPersistent(assetId));
+        this.game.events.on("octoglyphs:quick-preset", presetKey => this.applyLiveQuickPreset(presetKey));
         this.game.events.on("octoglyphs:save-changed", () => this.refreshSave());
         if (typeof document !== "undefined") {
             this.handleVisibilityChange = () => this.onVisibilityChanged();
@@ -1279,7 +1358,7 @@ export class IncubationScene extends Scene {
         this.zoomForTankHunt(true);
         this.tankBackgroundDepthIndex = 0;
         this.setTankBackground(pickBackgroundForDepthIndex(this.tankBackgroundDepthIndex));
-        this.game.events.emit("octoglyphs:notice", `${this.getTankArchetypeLabel()} Hunt started. Clear waves, stack mutations, then decide whether to continue.`);
+        this.game.events.emit("octoglyphs:notice", `${this.getTankArchetypeLabel()} Hunt: ${this.getTankRouteRules().routeLabel}. Clear waves, stack mutations, then decide whether to continue.`);
         this.startNextTankWave();
         if (this.isPageHidden) this.pauseTankHuntForVisibility();
         triggerFTUE("firstHuntStart", this.save);
@@ -1355,6 +1434,10 @@ export class IncubationScene extends Scene {
         }
 
         this.seedStartingArchetypeIdentity();
+        this.finalizePersistentHuntLoadout();
+    }
+
+    finalizePersistentHuntLoadout() {
         this.clampStartingTankPower();
         this.tankRunStats.maxHp = Math.max(1, this.tankRunStats.maxHp);
         this.tankRunStats.hp = this.tankRunStats.maxHp;
@@ -1386,11 +1469,126 @@ export class IncubationScene extends Scene {
         if (huntMods.shotLifetime) this.tankRunStats.shotLifetime *= huntMods.shotLifetime;
         if (huntMods.nextXpMult) this.tankRunStats.nextXpMult *= huntMods.nextXpMult;
 
-        const additiveKeys = ["damageBonus", "maxHp", "extraProjectiles", "bulletScale", "pierce", "split", "orbit", "poison", "bounce", "spinPower", "homing", "contagion", "gemPulse", "wakeTrail", "guardianCharges", "broadside", "backblast", "inkMines", "spiral", "prismFork", "critChance", "luckBonus", "wiggle", "boomerang", "lumpOfCoal", "chain", "fear", "freeze", "spectral"];
+        const additiveKeys = ["damageBonus", "maxHp", "extraProjectiles", "bulletScale", "pierce", "split", "orbit", "poison", "bounce", "spinPower", "homing", "contagion", "gemPulse", "wakeTrail", "guardianCharges", "broadside", "backblast", "inkMines", "spiral", "prismFork", "critChance", "luckBonus", "wiggle", "boomerang", "lumpOfCoal", "chain", "fear", "freeze", "spectral", "anchorShot", "vampireSiphon", "blackHolePearl", "tinyOcto", "hungryGems", "bossPressure", "routeEliteBonus", "gemDropBonus", "pressureBreakerBonus", "echoShot"];
         for (const key of additiveKeys) {
             if (!huntMods[key]) continue;
             this.tankRunStats[key] = (this.tankRunStats[key] || 0) + huntMods[key];
         }
+
+        this.applyPresetFamilyRule(huntMods);
+    }
+
+    applyPresetFamilyRule(huntMods) {
+        const presetKey = Object.keys(PRESET_FAMILY_RULES).find(key => huntMods[`presetFamily${key.charAt(0).toUpperCase()}${key.slice(1)}`]);
+        if (!presetKey) return;
+        this.applyPresetIdentity(presetKey);
+    }
+
+    applyPresetIdentity(presetKey) {
+        const rule = PRESET_FAMILY_RULES[presetKey];
+        if (!rule) return;
+        const stats = this.tankRunStats;
+
+        this.removePresetIdentity();
+        stats.presetFamily = presetKey;
+        stats.presetTint = rule.tint;
+        stats.presetLabel = rule.label;
+        stats.primaryFamily = rule.routeFamily;
+        this.addTankFamilyRank(rule.routeFamily, 12);
+
+        for (const [key, value] of Object.entries(rule.mods)) {
+            if (PRESET_MULTIPLY_KEYS.has(key)) {
+                stats[key] *= value;
+            } else {
+                stats[key] = (stats[key] || 0) + value;
+            }
+        }
+        stats.appliedPresetMods = { ...rule.mods };
+    }
+
+    removePresetIdentity() {
+        const stats = this.tankRunStats;
+        const previousMods = stats.appliedPresetMods;
+        if (!previousMods) return;
+
+        for (const [key, value] of Object.entries(previousMods)) {
+            if (PRESET_MULTIPLY_KEYS.has(key)) {
+                if (value !== 0) stats[key] /= value;
+            } else {
+                stats[key] = (stats[key] || 0) - value;
+            }
+        }
+
+        stats.appliedPresetMods = null;
+    }
+
+    rebuildLiveHuntLoadout(presetKey = null) {
+        if (!this.tankHuntActive || !this.tankRunStats) return;
+
+        const previousStats = this.tankRunStats;
+        const runState = this.captureLiveHuntRunState(previousStats);
+        this.tankRunStats = this.createTankRunStats();
+        this.applyPersistentHuntLoadout();
+        if (presetKey && PRESET_FAMILY_RULES[presetKey]) this.applyPresetIdentity(presetKey);
+        this.restoreLiveHuntRunState(runState);
+        this.configureAutoFireTimer();
+        this.refreshTankOrbiters();
+        this.updateTankHud();
+    }
+
+    captureLiveHuntRunState(stats) {
+        return {
+            level: stats.level,
+            xp: stats.xp,
+            nextXp: stats.nextXp,
+            hp: stats.hp,
+            mutationRanks: { ...(stats.mutationRanks || {}) },
+            mutationChoices: [...(stats.mutationChoices || [])],
+            bossRewards: [...(stats.bossRewards || [])],
+            bossRewardChoices: [...(stats.bossRewardChoices || [])],
+            lastTankMutationRoles: [...(this.lastTankMutationRoles || [])],
+            shotCounter: stats.shotCounter || 0,
+            nextGemResonanceAt: stats.nextGemResonanceAt || 0,
+            nextGoldenPrismAt: stats.nextGoldenPrismAt || 0,
+            shotPatternIndex: stats.shotPatternIndex || 0
+        };
+    }
+
+    restoreLiveHuntRunState(runState) {
+        const stats = this.tankRunStats;
+        stats.level = Math.max(1, runState.level || 1);
+        stats.xp = Math.max(0, runState.xp || 0);
+        stats.mutationRanks = { ...(runState.mutationRanks || {}) };
+        stats.mutationChoices = [...(runState.mutationChoices || [])];
+        stats.bossRewards = [...(runState.bossRewards || [])];
+        stats.bossRewardChoices = [...(runState.bossRewardChoices || [])];
+        stats.shotCounter = runState.shotCounter || 0;
+        stats.nextGemResonanceAt = runState.nextGemResonanceAt || 0;
+        stats.nextGoldenPrismAt = runState.nextGoldenPrismAt || 0;
+        stats.shotPatternIndex = runState.shotPatternIndex || 0;
+        this.lastTankMutationRoles = [...(runState.lastTankMutationRoles || [])];
+
+        for (const [mutationId, rank] of Object.entries(stats.mutationRanks)) {
+            const upgrade = TANK_MUTATION_POOL.find(item => item.id === mutationId);
+            if (!upgrade) continue;
+            for (let i = 0; i < rank; i += 1) {
+                stats.mutationRanks[mutationId] = i + 1;
+                stats.familyRanks[upgrade.family] = (stats.familyRanks[upgrade.family] || 0) + 1;
+                upgrade.apply(this);
+                this.applyTankFamilyEvolutions(upgrade.family);
+            }
+        }
+
+        for (const rewardId of stats.bossRewards) {
+            const reward = TANK_BOSS_REWARD_POOL.find(item => item.id === rewardId);
+            if (!reward) continue;
+            stats.familyRanks[reward.family] = (stats.familyRanks[reward.family] || 0) + 1;
+            reward.apply(this);
+        }
+
+        stats.maxHp = Math.max(1, stats.maxHp);
+        stats.hp = PhaserMath.Clamp(runState.hp || stats.maxHp, 1, stats.maxHp);
+        stats.nextXp = Math.max(stats.xp + 1, this.getTankXpForNextLevel(stats.level));
     }
 
     seedAssetHuntFamily(asset) {
@@ -1418,6 +1616,10 @@ export class IncubationScene extends Scene {
     }
 
     seedStartingArchetypeIdentity() {
+        if (this.tankRunStats.presetFamily && PRESET_FAMILY_RULES[this.tankRunStats.presetFamily]) {
+            this.tankRunStats.primaryFamily = PRESET_FAMILY_RULES[this.tankRunStats.presetFamily].routeFamily;
+            return;
+        }
         this.tankRunStats.primaryFamily = this.getDominantTankFamily();
     }
 
@@ -1485,7 +1687,7 @@ export class IncubationScene extends Scene {
         this.tankBurstCount = 0;
 
         // Pick wave recipe
-        this.currentWaveRecipe = pickWaveRecipe(wave);
+        this.currentWaveRecipe = pickWaveRecipe(wave, this.tankRunStats.primaryFamily || this.getDominantTankFamily());
         const recipe = this.currentWaveRecipe;
 
         // Trigger difficulty event before calculating interval so spawnMult applies immediately.
@@ -1592,9 +1794,73 @@ export class IncubationScene extends Scene {
     }
 
 
+    getTankRouteRules() {
+        const family = this.tankRunStats?.primaryFamily || this.getDominantTankFamily?.() || "tide";
+        return TANK_ARCHETYPE_RUN_RULES[family] || TANK_ARCHETYPE_RUN_RULES.tide;
+    }
+
+    getLiveProjectilePressure() {
+        const stats = this.tankRunStats || {};
+        const activeBullets = this.bullets?.countActive(true) || 0;
+        const activeMines = this.playerMines?.countActive(true) || 0;
+        const activeOrbiters = this.tankOrbiters?.filter(orbiter => orbiter.active).length || 0;
+        const fireScore = Math.max(0, (TANK_BASE_FIRE_DELAY - (stats.fireDelay || TANK_BASE_FIRE_DELAY)) / 24);
+        const bulletScore = activeBullets * 0.18;
+        const mineScore = activeMines * 0.38;
+        const orbiterScore = activeOrbiters * 0.95;
+        const controlScore =
+            (stats.homing || 0) * 1.25 +
+            (stats.chain || 0) * 1.45 +
+            (stats.pierce || 0) * 1.15 +
+            (stats.bounce || 0) * 1.05 +
+            (stats.split || 0) * 1.65 +
+            (stats.broadside || 0) * 1.45 +
+            (stats.spiral || 0) * 1.2 +
+            (stats.prismFork || 0) * 1.25;
+        const damageScore = Math.max(0, stats.damageBonus || 0) * 0.62;
+        const sizeScore = Math.max(0, (stats.bulletScale || 1) - 1) * 3.8;
+        const comboScore = ((stats.activeSynergyIds || []).length * 1.4) + ((stats.activeInteractionIds || []).length * 0.9);
+        return PhaserMath.Clamp(Math.round(fireScore + bulletScore + mineScore + orbiterScore + controlScore + damageScore + sizeScore + comboScore), 0, 36);
+    }
+
+    getTankPlayerMaxSpeed() {
+        return 190 * (this.stats?.swimSpeed || 1) * (this.tankRunStats?.swimSpeed || 1);
+    }
+
+    getFairEnemyCruiseSpeed(enemy, speed) {
+        const playerMaxSpeed = this.getTankPlayerMaxSpeed();
+        const behavior = enemy.getData("behavior") || "chaser";
+        const isBoss = Boolean(enemy.getData("boss"));
+        const pressureBreaker = Boolean(enemy.getData("pressureBreaker"));
+        let capMult = 0.82;
+
+        if (isBoss) capMult = 0.78;
+        else if (behavior === "sniper" || behavior === "herder" || behavior === "blocker") capMult = 0.72;
+        else if (behavior === "dart" || behavior === "pouncer" || behavior === "charger") capMult = 0.94;
+        else if (behavior === "flanker" || behavior === "zigzag" || behavior === "spiraler") capMult = 0.88;
+
+        if (pressureBreaker) capMult = Math.min(0.96, capMult + 0.08);
+        return Math.min(speed, playerMaxSpeed * capMult);
+    }
+
+    getFairEnemyDashSpeed(enemy, speed, capMult = 1.35, floorSpeed = 0) {
+        const playerMaxSpeed = this.getTankPlayerMaxSpeed();
+        return Math.min(Math.max(speed, floorSpeed), playerMaxSpeed * capMult);
+    }
+
     getTankDifficultyPressure() {
         const score = this.tankRunStats?.startingPowerScore || 0;
-        return PhaserMath.Clamp(Math.floor(score / 3), 0, 12);
+        const startingPressure = PhaserMath.Clamp(Math.floor(score / 3), 0, 12);
+        const livePressure = this.getLiveProjectilePressure();
+        return PhaserMath.Clamp(Math.max(startingPressure, Math.floor(livePressure / 2)), 0, 20);
+    }
+
+    getProjectilePressureTier() {
+        const pressure = this.getTankDifficultyPressure();
+        if (pressure >= 15) return 3;
+        if (pressure >= 10) return 2;
+        if (pressure >= 6) return 1;
+        return 0;
     }
 
     getTankWaveInterval(wave, recipe = this.currentWaveRecipe) {
@@ -1602,31 +1868,49 @@ export class IncubationScene extends Scene {
         const baseInterval = Math.max(220, 680 - wave * 45);
         const eventSpawnMult = (this.tankActiveEvent && this.time.now < this.tankActiveEvent.endsAt) ? (this.tankActiveEvent.def.spawnMult || 1) : 1;
         const pressureSpawnMult = 1 + Math.min(0.45, pressure * 0.04);
-        return Math.max(150, Math.round(baseInterval * (recipe?.intervalMult || 1) / (eventSpawnMult * pressureSpawnMult)));
+        const routeRules = this.getTankRouteRules();
+        return Math.max(150, Math.round(baseInterval * (recipe?.intervalMult || 1) * (routeRules.intervalMult || 1) * (this.tankRunStats.waveIntervalMult || 1) / (eventSpawnMult * pressureSpawnMult)));
     }
 
     spawnTankWaveBurst(wave, waveToken = this.tankWaveToken) {
         if (!this.tankHuntActive || this.tankBoss || this.tankUpgradeChoiceActive || this.tankContinueChoiceActive || this.tankWaveResolving || wave !== this.tankHuntWave || waveToken !== this.tankWaveToken || this.tankHuntKills >= this.tankHuntGoal) return;
 
-        // Spawn breathing: pause every 3-4 bursts for a lull
+        // Spawn breathing: preserve lulls at low power, but keep high projectile-pressure runs under threat.
         this.tankBurstCount = (this.tankBurstCount || 0) + 1;
-        const breatheAfter = 3 + Math.floor(wave / 4);
+        const pressureTier = this.getProjectilePressureTier();
+        const breatheAfter = pressureTier >= 3 ? 8 : pressureTier >= 2 ? 6 : 3 + Math.floor(wave / 4);
         if (this.tankBurstCount >= breatheAfter) {
             this.tankBurstCount = 0;
-            // Skip this burst (breathing lull) - timer will fire again next interval
+            if (pressureTier >= 2 || (this.tankRunStats.pressureBreakerBonus || 0) > 0) this.spawnPressureBreakerEnemy(wave, this.currentWaveRecipe || null);
             return;
         }
 
         const recipe = this.currentWaveRecipe || TANK_WAVE_RECIPES.find(r => r.id === "mixed_assault");
+        const routeRules = this.getTankRouteRules();
         const pressure = this.getTankDifficultyPressure();
-        const baseCount = 2 + Math.floor(wave / 2) + Math.floor(pressure / 6);
-        const spawnPerPulse = Math.max(1, Math.round(baseCount * (recipe.countMult || 1)));
+        const baseCount = 2 + Math.floor(wave / 2) + Math.floor(pressure / 5);
+        const pressureCountMult = pressureTier >= 3 ? 1.28 : pressureTier >= 2 ? 1.16 : 1;
+        const spawnPerPulse = Math.max(1, Math.round(baseCount * (recipe.countMult || 1) * (routeRules.countMult || 1) * pressureCountMult));
 
-        // Pick a formation for this burst
         const positions = this.pickFormationPositions(spawnPerPulse, recipe);
         for (let i = 0; i < spawnPerPulse; i += 1) {
             this.spawnTankEnemy(false, wave, recipe, positions[i] || null);
         }
+    }
+
+    spawnPressureBreakerEnemy(wave, recipe = null) {
+        if (!this.tankHuntActive || !this.octo?.active || this.enemies.countActive(true) > 28 + wave * 4) return;
+        const pressureTier = this.getProjectilePressureTier();
+        const position = this.pickPressureSpawnPosition();
+        const breakerRecipe = recipe || { enemies: ["tank-enemy-enemi4", "tank-enemy-enemi5", "tank-enemy-enemi1112", "tank-enemy-narval"] };
+        const enemy = this.spawnTankEnemy(false, wave, breakerRecipe, position);
+        if (!enemy?.active) return;
+        enemy.setData("pressureBreaker", true);
+        enemy.setData("entryArmorUntil", this.time.now + (pressureTier >= 3 ? 1150 : 850));
+        enemy.setData("entryArmorMult", pressureTier >= 3 ? 0.2 : 0.35);
+        enemy.setData("speed", (enemy.getData("speed") || 90) * (pressureTier >= 3 ? 1.1 : 1.04));
+        enemy.setTint(0x88ffcc);
+        this.spawnPulseVisual(enemy.x, enemy.y, 54, 0x88ffcc);
     }
 
     spawnTankEnemy(isBoss = false, wave = this.tankHuntWave || 1, recipe = null, overridePos = null) {
@@ -1640,7 +1924,7 @@ export class IncubationScene extends Scene {
         let def;
         if (isBoss) {
             const bossDef = Utils.Array.GetRandom(TANK_BOSS_TYPES);
-            def = { ...bossDef, hp: Math.round((bossDef.hp || 42) * 1.9 + wave * 22) };
+            def = { ...bossDef, hp: Math.round(((bossDef.hp || 42) * 1.9 + wave * 22) * (this.getTankRouteRules().bossHpMult || 1) * (1 + (this.tankRunStats.bossPressure || 0) * 0.18)) };
         } else if (recipe && recipe.enemies && recipe.enemies.length > 0) {
             const chosenKey = Utils.Array.GetRandom(recipe.enemies);
             const found = TANK_ENEMY_TYPES.find(e => e.key === chosenKey);
@@ -1654,7 +1938,7 @@ export class IncubationScene extends Scene {
 
         const pressure = this.getTankDifficultyPressure();
         const eventEliteMult = (this.tankActiveEvent && this.time.now < this.tankActiveEvent.endsAt) ? (this.tankActiveEvent.def.eliteChanceMult || 1) : 1;
-        const eliteChance = Math.min(64, Math.round((12 + pressure * 2.2) * eventEliteMult));
+        const eliteChance = Math.min(76, Math.round((12 + pressure * 2.2 + (this.getTankRouteRules().eliteBonus || 0) + (this.tankRunStats.routeEliteBonus || 0)) * eventEliteMult));
         const eliteMinWave = pressure >= 8 ? 2 : (pressure >= 4 ? 3 : 4);
         const isElite = !isBoss && wave >= eliteMinWave && PhaserMath.Between(1, 100) <= eliteChance;
         const eliteMod = isElite ? this.pickEliteModifier() : null;
@@ -1663,11 +1947,12 @@ export class IncubationScene extends Scene {
 
         const recipeHpMult = (!isBoss && recipe?.hpMult) ? recipe.hpMult : 1;
         const recipeSpeedMult = (!isBoss && recipe?.speedMult) ? recipe.speedMult : 1;
-        const pressureHpMult = isBoss ? 1 + Math.min(2.4, pressure * 0.14) : 1 + Math.min(0.85, pressure * 0.07);
+        const pressureHpMult = isBoss ? 1 + Math.min(3.2, pressure * 0.18) : 1 + Math.min(1.45, pressure * 0.095);
         const enemyMaxHp = Math.round((def.hp + Math.max(0, wave - 1) * 0.55) * hpMult * pressureHpMult * recipeHpMult);
         enemy.setData("hp", enemyMaxHp);
         enemy.setData("maxHp", enemyMaxHp);
-        enemy.setData("speed", (def.speed + Math.max(0, wave - 1) * 6.5) * speedMult * recipeSpeedMult);
+        const pressureSpeedMult = !isBoss && pressure >= 10 ? 1 + Math.min(0.28, (pressure - 9) * 0.025) : 1;
+        enemy.setData("speed", (def.speed + Math.max(0, wave - 1) * 6.5) * speedMult * recipeSpeedMult * pressureSpeedMult);
         // Assign boss-specific behavior based on key
         let bossBehavior = "boss";
         if (isBoss) {
@@ -1697,10 +1982,13 @@ export class IncubationScene extends Scene {
             enemy.setData("bossLungeUntil", 0);
             enemy.setData("bossPhaseState", "vulnerable"); // vulnerable | invulnerable
             enemy.setData("bossPhaseTimer", this.time.now + PhaserMath.Between(2800, 4200));
+            enemy.setData("bossMinimumLifeUntil", this.time.now + (pressure >= 12 ? 3600 : 2200));
+            enemy.setData("bossArmorMult", pressure >= 12 ? 0.42 : 0.7);
         }
         const eventGemMult = (this.tankActiveEvent && this.time.now < this.tankActiveEvent.endsAt) ? (this.tankActiveEvent.def.gemDropMult || 1) : 1;
-        const normalDropChance = Math.min(52, Math.round((TANK_NORMAL_GEM_DROP_CHANCE + Math.floor(wave * 0.6) + Math.round((this.tankRunStats.luckBonus || 0) * 5)) * eventGemMult));
-        const eliteDropChance = Math.min(92, Math.round((TANK_ELITE_GEM_DROP_CHANCE + Math.round((this.tankRunStats.luckBonus || 0) * 6)) * eventGemMult));
+        const gemDropBonus = (this.getTankRouteRules().gemDropBonus || 0) + (this.tankRunStats.gemDropBonus || 0);
+        const normalDropChance = Math.min(64, Math.round((TANK_NORMAL_GEM_DROP_CHANCE + Math.floor(wave * 0.6) + Math.round((this.tankRunStats.luckBonus || 0) * 5) + gemDropBonus * 100) * eventGemMult));
+        const eliteDropChance = Math.min(96, Math.round((TANK_ELITE_GEM_DROP_CHANCE + Math.round((this.tankRunStats.luckBonus || 0) * 6) + gemDropBonus * 55) * eventGemMult));
         const dropsNormalGem = PhaserMath.Between(1, 100) <= normalDropChance;
         const dropsEliteGem = PhaserMath.Between(1, 100) <= eliteDropChance;
         enemy.setData("gemType", isBoss ? "blue" : (isElite ? "blue" : this.pickTankEnemyGemType(wave)));
@@ -1742,6 +2030,7 @@ export class IncubationScene extends Scene {
             this.tankBoss = enemy;
             this.tankWaveResolving = true;
         }
+        return enemy;
     }
 
     pickEliteModifier() {
@@ -1781,6 +2070,20 @@ export class IncubationScene extends Scene {
         if (edge === 1) return { x: this.worldWidth - margin, y: PhaserMath.Between(100, this.worldHeight - 100) };
         if (edge === 2) return { x: PhaserMath.Between(90, this.worldWidth - 90), y: margin };
         return { x: PhaserMath.Between(90, this.worldWidth - 90), y: this.worldHeight - margin };
+    }
+
+    pickPressureSpawnPosition() {
+        if (!this.octo?.active) return this.pickTankSpawnPosition();
+        const camera = this.cameras.main;
+        const view = camera.worldView;
+        const minDist = Math.min(view.width, view.height) * 0.22;
+        const maxDist = Math.min(view.width, view.height) * 0.42;
+        const angle = PhaserMath.FloatBetween(0, Math.PI * 2);
+        const distance = PhaserMath.Between(Math.round(minDist), Math.round(maxDist));
+        return {
+            x: this.octo.x + Math.cos(angle) * distance,
+            y: this.octo.y + Math.sin(angle) * distance
+        };
     }
 
     pickFormationPositions(count, recipe) {
@@ -1875,15 +2178,13 @@ export class IncubationScene extends Scene {
             }
 
             const baseSpeed = enemy.getData("speed") || 50;
-            // Apply difficulty event speed multiplier — scale relative to player speed so fast builds still feel pressure
+            // Apply difficulty event speed multiplier. Keep it bounded so speed traits remain an escape tool.
             let eventSpeedMult = 1;
             if (this.tankActiveEvent && this.time.now < this.tankActiveEvent.endsAt) {
                 const rawMult = this.tankActiveEvent.def.speedMult || 1;
-                // Player speed factor: if player is faster than default, boost event speed proportionally
-                const playerSpeedFactor = (this.stats?.swimSpeed || 1) * (this.tankRunStats?.swimSpeed || 1);
-                eventSpeedMult = 1 + (rawMult - 1) * Math.max(1, playerSpeedFactor);
+                eventSpeedMult = 1 + (rawMult - 1) * 0.72;
             }
-            const speed = baseSpeed * eventSpeedMult;
+            const speed = this.getFairEnemyCruiseSpeed(enemy, baseSpeed * eventSpeedMult);
             const behavior = enemy.getData("behavior") || "chaser";
             const phase = enemy.getData("phase") || 0;
             const age = Math.max(0, this.time.now - (enemy.getData("spawnedAt") || this.time.now));
@@ -1954,8 +2255,9 @@ export class IncubationScene extends Scene {
                     enemy.setData("behaviorTimer", this.time.now + PhaserMath.Between(1200, 2100));
                 }
                 if (this.time.now < (enemy.getData("dashUntil") || 0)) {
-                    targetVelocityX = (enemy.getData("dashDirX") || dx / length) * speed * 2.45;
-                    targetVelocityY = (enemy.getData("dashDirY") || dy / length) * speed * 2.45;
+                    const dashSpeed = this.getFairEnemyDashSpeed(enemy, speed * 2.45, 1.34, speed * 1.15);
+                    targetVelocityX = (enemy.getData("dashDirX") || dx / length) * dashSpeed;
+                    targetVelocityY = (enemy.getData("dashDirY") || dy / length) * dashSpeed;
                     enemy.setData("instantVelocity", true);
                 } else {
                     const stalk = Math.sin(this.time.now * 0.004 + phase) * speed * 0.5;
@@ -1968,8 +2270,9 @@ export class IncubationScene extends Scene {
                     enemy.setData("chargeUntil", this.time.now + 520);
                 }
                 if (this.time.now < (enemy.getData("chargeUntil") || 0)) {
-                    targetVelocityX = dx / length * speed * 1.9;
-                    targetVelocityY = dy / length * speed * 1.9;
+                    const pounceSpeed = this.getFairEnemyDashSpeed(enemy, speed * 1.9, 1.24, speed * 1.08);
+                    targetVelocityX = dx / length * pounceSpeed;
+                    targetVelocityY = dy / length * pounceSpeed;
                 } else {
                     const offset = Math.sin(this.time.now * 0.004 + phase) * speed * 0.45;
                     targetVelocityX = dx / length * speed * 0.68 + (-dy / length) * offset;
@@ -2023,7 +2326,7 @@ export class IncubationScene extends Scene {
                     }
                 } else if (state === "charging") {
                     enemy.setTint(0xff3311);
-                    const dashSpeed = Math.max(speed * 4.4 * phaseBoost, playerMaxSpeed * 2.25 * phaseBoost, 560);
+                    const dashSpeed = this.getFairEnemyDashSpeed(enemy, speed * 4.4 * phaseBoost, 1.82 * phaseBoost, 440);
                     const cdx = enemy.getData("chargeDirX") || dx / length;
                     const cdy = enemy.getData("chargeDirY") || dy / length;
                     targetVelocityX = cdx * dashSpeed;
@@ -2045,7 +2348,6 @@ export class IncubationScene extends Scene {
             } else if (behavior === "boss_charger") {
                 // Shark boss: stalk → wind up → charge → recover → repeat
                 // Scale charge speed relative to player speed so it's dodgeable but threatening
-                const playerMaxSpeed = 190 * (this.stats?.swimSpeed || 1) * (this.tankRunStats?.swimSpeed || 1);
                 const state = enemy.getData("bossChargeState") || "stalk";
                 const timer = enemy.getData("bossChargeTimer") || 0;
                 const now = this.time.now;
@@ -2075,7 +2377,7 @@ export class IncubationScene extends Scene {
                     }
                 } else if (state === "charging") {
                     // Fast straight-line charge in locked direction.
-                    const chargeSpeed = Math.max(speed * 2.8, playerMaxSpeed * 1.7);
+                    const chargeSpeed = this.getFairEnemyDashSpeed(enemy, speed * 2.8, 1.55, speed * 1.25);
                     const cdx = enemy.getData("chargeDirX") || dx / length;
                     const cdy = enemy.getData("chargeDirY") || dy / length;
                     targetVelocityX = cdx * chargeSpeed;
@@ -2095,13 +2397,12 @@ export class IncubationScene extends Scene {
                 }
             } else if (behavior === "boss_summoner") {
                 // Halloween octo boss: pressure drift, periodic lunges, and mini-add summons.
-                const playerMaxSpeed = 190 * (this.stats?.swimSpeed || 1) * (this.tankRunStats?.swimSpeed || 1);
                 const now = this.time.now;
                 const lungeUntil = enemy.getData("bossLungeUntil") || 0;
                 const lungeCd = enemy.getData("bossLungeCooldown") || 0;
 
                 if (now < lungeUntil) {
-                    const lungeSpeed = Math.max(speed * 1.85, playerMaxSpeed * 1.28);
+                    const lungeSpeed = this.getFairEnemyDashSpeed(enemy, speed * 1.85, 1.22, speed * 1.08);
                     const ldx = enemy.getData("bossLungeDirX") || dx / length;
                     const ldy = enemy.getData("bossLungeDirY") || dy / length;
                     targetVelocityX = ldx * lungeSpeed;
@@ -2144,7 +2445,6 @@ export class IncubationScene extends Scene {
                 }
             } else if (behavior === "boss_phaser") {
                 // Mummy shark: alternates vulnerable (slow chase) and invulnerable (fast rush)
-                const playerMaxSpeed = 190 * (this.stats?.swimSpeed || 1) * (this.tankRunStats?.swimSpeed || 1);
                 const phaseState = enemy.getData("bossPhaseState") || "vulnerable";
                 const phaseTimer = enemy.getData("bossPhaseTimer") || 0;
                 const now = this.time.now;
@@ -2161,7 +2461,7 @@ export class IncubationScene extends Scene {
                     }
                 } else {
                     // Invulnerable rush — player must dodge.
-                    const rushSpeed = Math.max(speed * 2.25, playerMaxSpeed * 1.45);
+                    const rushSpeed = this.getFairEnemyDashSpeed(enemy, speed * 2.25, 1.34, speed * 1.16);
                     targetVelocityX = dx / length * rushSpeed;
                     targetVelocityY = dy / length * rushSpeed;
                     enemy.setAlpha(0.52);
@@ -2265,32 +2565,35 @@ export class IncubationScene extends Scene {
     }
 
     fireTankShotPattern(angle) {
+        this.tankRunStats.shotCounter = (this.tankRunStats.shotCounter || 0) + 1;
         const synergyIds = this.tankRunStats.activeSynergyIds || [];
-        if (synergyIds.includes("theme-chaos")) {
-            this.fireChaosInkPattern(angle);
-            return;
+        if (synergyIds.includes("theme-chaos")) this.fireChaosInkPattern(angle);
+        else if (synergyIds.includes("theme-fortress")) this.fireReefFortressPattern(angle);
+        else if (synergyIds.includes("theme-smart-shot")) this.fireSmartShotPattern(angle);
+        else if (synergyIds.includes("theme-toxic")) this.fireVenomBrewerPattern(angle);
+        else if (synergyIds.includes("theme-treasure")) this.fireGemResonancePattern(angle);
+        else if (synergyIds.includes("theme-ghost")) this.fireGhostCurrentPattern(angle);
+        else this.fireDominantTraitPattern(angle);
+        this.applyWeirdShotAftercast(angle);
+    }
+
+    applyWeirdShotAftercast(angle) {
+        if ((this.tankRunStats.echoShot || 0) > 0) {
+            const echoAngle = angle + Math.PI + PhaserMath.FloatBetween(-0.18, 0.18);
+            this.time.delayedCall(95, () => {
+                if (!this.tankHuntActive) return;
+                const echo = this.createTankBullet(echoAngle, 0.52, 0.58);
+                echo?.setAlpha(0.68);
+                echo?.setData("homing", Math.max(echo.getData("homing") || 0, 1));
+            });
         }
-        if (synergyIds.includes("theme-fortress")) {
-            this.fireReefFortressPattern(angle);
-            return;
+        const pearlRank = this.tankRunStats.blackHolePearl || 0;
+        if (pearlRank > 0) {
+            const interval = Math.max(5, 10 - pearlRank * 2);
+            if ((this.tankRunStats.shotCounter || 0) % interval === 0) {
+                this.spawnBlackHolePull(this.octo.x + Math.cos(angle) * 170, this.octo.y + Math.sin(angle) * 170, 150 + pearlRank * 32, 0.34 + pearlRank * 0.12);
+            }
         }
-        if (synergyIds.includes("theme-smart-shot")) {
-            this.fireSmartShotPattern(angle);
-            return;
-        }
-        if (synergyIds.includes("theme-toxic")) {
-            this.fireVenomBrewerPattern(angle);
-            return;
-        }
-        if (synergyIds.includes("theme-treasure")) {
-            this.fireGemResonancePattern(angle);
-            return;
-        }
-        if (synergyIds.includes("theme-ghost")) {
-            this.fireGhostCurrentPattern(angle);
-            return;
-        }
-        this.fireDominantTraitPattern(angle);
     }
 
     fireDominantTraitPattern(angle) {
@@ -2433,6 +2736,7 @@ export class IncubationScene extends Scene {
     }
 
     createTankBulletAt(x, y, shotAngle, damageScale = 1, scaleMultiplier = 1) {
+        if ((this.bullets?.countActive(true) || 0) >= TANK_MAX_ACTIVE_PLAYER_BULLETS) return null;
         const bullet = this.bullets.create(x, y, this.getTankBulletTextureKey());
         this.configureTankBullet(bullet, shotAngle, damageScale, scaleMultiplier);
         return bullet;
@@ -2440,6 +2744,7 @@ export class IncubationScene extends Scene {
 
     configureTankBullet(bullet, shotAngle, damageScale = 1, scaleMultiplier = 1) {
         let damage = Math.max(1, Math.round((this.stats.damage + this.tankRunStats.damageBonus) * damageScale));
+        if ((this.tankRunStats.anchorShot || 0) > 0) damage += this.tankRunStats.anchorShot;
         const critChance = this.tankRunStats.critChance || 0;
         if (critChance > 0 && Math.random() < critChance) {
             damage *= 2;
@@ -2461,6 +2766,7 @@ export class IncubationScene extends Scene {
         bullet.setData("synergyIds", [...(this.tankRunStats.activeSynergyIds || [])]);
         bullet.setData("interactionIds", [...(this.tankRunStats.activeInteractionIds || [])]);
         bullet.setData("interactionFlags", { ...(this.tankRunStats.activeInteractionFlags || {}) });
+        bullet.setData("anchorShot", this.tankRunStats.anchorShot || 0);
         bullet.setData("spawnedAt", this.time.now);
         bullet.setData("baseAngle", shotAngle);
         bullet.setData("baseSpeed", this.tankRunStats.shotSpeed);
@@ -2471,7 +2777,8 @@ export class IncubationScene extends Scene {
         bullet.setTint(this.getTankBulletTint());
         this.improveGameplayReadability(bullet, { outlineAlpha: 0.36, haloColor: this.getTankBulletTint(), haloAlpha: 0.28, haloBlur: 7 });
         bullet.body.setCircle(11 * this.tankRunStats.bulletScale * scaleMultiplier, 0, 0);
-        bullet.body.setVelocity(Math.cos(shotAngle) * this.tankRunStats.shotSpeed, Math.sin(shotAngle) * this.tankRunStats.shotSpeed);
+        const anchorSlow = (this.tankRunStats.anchorShot || 0) > 0 ? 0.82 : 1;
+        bullet.body.setVelocity(Math.cos(shotAngle) * this.tankRunStats.shotSpeed * anchorSlow, Math.sin(shotAngle) * this.tankRunStats.shotSpeed * anchorSlow);
         bullet.rotation = shotAngle + TANK_BULLET_ANGLE_OFFSET;
         const lifetime = this.tankRunStats.spectral > 0 ? this.tankRunStats.shotLifetime * 3 : this.tankRunStats.shotLifetime;
         this.time.delayedCall(lifetime, () => {
@@ -2486,6 +2793,7 @@ export class IncubationScene extends Scene {
 
     getTankBulletTint() {
         const synergyIds = this.tankRunStats.activeSynergyIds || [];
+        if (this.tankRunStats.presetTint) return this.tankRunStats.presetTint;
         if (synergyIds.includes("theme-toxic")) return PhaserMath.RND.pick([0x78ff69, 0xb6ff4a, 0x35d957]);
         if (synergyIds.includes("theme-smart-shot")) return PhaserMath.RND.pick([0x66ccff, 0xffee55, 0xffffff]);
         if (synergyIds.includes("theme-fortress")) return PhaserMath.RND.pick([0x66ccff, 0xd8f8ff, 0xffffff]);
@@ -2867,12 +3175,12 @@ export class IncubationScene extends Scene {
 
     forkPrismBullet(bullet, enemy) {
         if (!bullet?.active || !enemy?.active) return;
-        const forks = PhaserMath.Clamp(this.tankRunStats.prismFork + 1, 2, 5);
+        const forks = PhaserMath.Clamp(this.tankRunStats.prismFork + 1, 2, 4);
         const baseAngle = Math.atan2(bullet.body.velocity.y, bullet.body.velocity.x);
         for (let i = 0; i < forks; i += 1) {
-            const angle = baseAngle + PhaserMath.DegToRad(-38 + (76 / Math.max(1, forks - 1)) * i);
-            const child = this.bullets.create(enemy.x, enemy.y, this.getTankBulletTextureKey());
-            this.configureTankBullet(child, angle, 0.48, 0.54);
+            const angle = baseAngle + PhaserMath.DegToRad(-34 + (68 / Math.max(1, forks - 1)) * i);
+            const child = this.createTankBulletAt(enemy.x, enemy.y, angle, 0.48, 0.54);
+            if (!child) return;
             child.setData("critical", false);
             child.setData("prismForked", true);
             if (this.bulletHasInteraction(bullet, "seeker-prism")) child.setData("homing", Math.max(child.getData("homing") || 0, 1.5));
@@ -2937,6 +3245,19 @@ export class IncubationScene extends Scene {
         }
     }
 
+    spawnBlackHolePull(x, y, radius = 160, strength = 0.42) {
+        if (!this.tankHuntActive || !this.enemies) return;
+        this.spawnPulseVisual(x, y, radius, 0x9b4dff);
+        for (const enemy of this.enemies.getChildren()) {
+            if (!enemy.active || !enemy.body) continue;
+            if (this.toroidalDistance(x, y, enemy.x, enemy.y) > radius) continue;
+            const delta = this.toroidalDelta(enemy.x, enemy.y, x, y);
+            enemy.body.velocity.x += delta.dx * strength;
+            enemy.body.velocity.y += delta.dy * strength;
+            if (!enemy.getData("boss")) enemy.setTint(0x9b4dff);
+        }
+    }
+
     applyFearToEnemy(enemy, rank) {
         if (!enemy?.active || enemy.getData("feared")) return;
         enemy.setData("feared", true);
@@ -2983,8 +3304,8 @@ export class IncubationScene extends Scene {
         if (!nearest) return;
         const delta = this.toroidalDelta(source.x, source.y, nearest.x, nearest.y);
         const angle = Math.atan2(delta.dy, delta.dx);
-        const child = this.bullets.create(source.x, source.y, this.getTankBulletTextureKey());
-        this.configureTankBullet(child, angle, damageScale, 0.74);
+        const child = this.createTankBulletAt(source.x, source.y, angle, damageScale, 0.74);
+        if (!child) return;
         child.setData("chain", 1);
         child.setData("chainJumpsLeft", jumpsLeft - 1);
         child.setData("chainDamageScale", Math.max(0.38, damageScale * 0.72));
@@ -2995,13 +3316,13 @@ export class IncubationScene extends Scene {
 
     splitTankBullet(bullet, enemy) {
         bullet.setData("splitLeft", 0);
-        const splits = PhaserMath.Clamp(1 + this.tankRunStats.split, 2, 5);
+        const splits = PhaserMath.Clamp(1 + this.tankRunStats.split, 2, 4);
         const splitDelta = this.toroidalDelta(this.octo.x, this.octo.y, enemy.x, enemy.y);
         const baseAngle = Math.atan2(splitDelta.dy, splitDelta.dx);
         for (let i = 0; i < splits; i += 1) {
-            const angle = baseAngle + PhaserMath.DegToRad(-42 + (84 / Math.max(1, splits - 1)) * i);
-            const child = this.bullets.create(enemy.x, enemy.y, this.getTankBulletTextureKey());
-            this.configureTankBullet(child, angle, 0.55, 0.62);
+            const angle = baseAngle + PhaserMath.DegToRad(-36 + (72 / Math.max(1, splits - 1)) * i);
+            const child = this.createTankBulletAt(enemy.x, enemy.y, angle, 0.55, 0.62);
+            if (!child) return;
             child.setData("splitLeft", 0);
             child.setData("pierceLeft", Math.max(0, this.tankRunStats.pierce - 1));
         }
@@ -3017,26 +3338,36 @@ export class IncubationScene extends Scene {
             return;
         }
 
-        enemy.setData("hp", (enemy.getData("hp") || 1) - damage);
+        let appliedDamage = damage;
+        if (this.time.now < (enemy.getData("entryArmorUntil") || 0)) {
+            appliedDamage = Math.max(1, Math.ceil(appliedDamage * (enemy.getData("entryArmorMult") || 0.35)));
+            if (PhaserMath.Between(1, 100) <= 35) this.spawnDamageNumber(enemy.x, enemy.y - 28, 0, false, "ARMOR");
+        }
+        if (enemy.getData("boss") && this.time.now < (enemy.getData("bossMinimumLifeUntil") || 0)) {
+            appliedDamage = Math.max(1, Math.ceil(appliedDamage * (enemy.getData("bossArmorMult") || 0.7)));
+        }
+
+        enemy.setData("hp", (enemy.getData("hp") || 1) - appliedDamage);
         enemy.setTint(0xffffff).setTintMode(TintModes.FILL);
         this.time.delayedCall(60, () => {
             if (enemy.active) {
                 enemy.setTintMode(TintModes.MULTIPLY);
                 if (enemy.getData("frozen")) enemy.setTint(0x66ccff);
                 else if (enemy.getData("feared")) enemy.setTint(0xaa44ff);
+                else if (this.time.now < (enemy.getData("entryArmorUntil") || 0)) enemy.setTint(0x88ffcc);
                 else if (enemy.getData("elite")) enemy.setTint(enemy.getData("eliteTint") || 0xff4444);
                 else enemy.clearTint();
             }
         });
 
-        this.spawnDamageNumber(enemy.x, enemy.y - 18, damage, damage >= 4);
+        this.spawnDamageNumber(enemy.x, enemy.y - 18, appliedDamage, appliedDamage >= 4);
 
         if ((enemy.getData("hp") || 0) > 0) return;
 
         const wasBoss = Boolean(enemy.getData("boss"));
         const isElite = Boolean(enemy.getData("elite"));
         const eliteType = enemy.getData("eliteType");
-        const gemCount = enemy.getData("gems") ?? 0;
+        const gemCount = (enemy.getData("gems") ?? 0) + (wasBoss ? (this.tankRunStats.bossRewardGemBonus || 0) : 0);
         const gemType = enemy.getData("gemType") || "green";
         const deathX = enemy.x;
         const deathY = enemy.y;
@@ -3112,11 +3443,23 @@ export class IncubationScene extends Scene {
 
         this.tankHuntKills += 1;
         this.tankHuntTotalKills += 1;
+        this.applyVampireSiphonReward();
         this.game.events.emit("octoglyphs:hunt-state", this.getTankHuntState());
 
         if (this.tankHuntKills < this.tankHuntGoal || this.tankBoss || this.tankWaveResolving) return;
 
         this.resolveTankWaveClear();
+    }
+
+    applyVampireSiphonReward() {
+        const rank = this.tankRunStats?.vampireSiphon || 0;
+        if (!rank) return;
+        const interval = Math.max(12, 24 - rank * 5);
+        if ((this.tankHuntTotalKills || 0) % interval !== 0) return;
+        if (this.tankRunStats.hp >= this.tankRunStats.maxHp) return;
+        this.tankRunStats.hp = Math.min(this.tankRunStats.maxHp, this.tankRunStats.hp + 1);
+        this.showCenterTraitText("VAMPIRE SIPHON +1 HEART");
+        this.updateTankHud();
     }
 
     resolveTankWaveClear() {
@@ -3331,6 +3674,11 @@ export class IncubationScene extends Scene {
             maxHp: this.tankRunStats.maxHp,
             debug: {
                 primaryFamily: this.tankRunStats.primaryFamily,
+                route: this.getTankRouteRules().routeLabel,
+                projectilePressure: this.getLiveProjectilePressure(),
+                difficultyPressure: this.getTankDifficultyPressure(),
+                pressureTier: this.getProjectilePressureTier(),
+                activeBullets: this.bullets?.countActive(true) || 0,
                 activeSynergies: [...(this.tankRunStats.activeSynergyIds || [])],
                 activeInteractions: [...(this.tankRunStats.activeInteractionIds || [])],
                 topFlags: Object.entries(this.tankRunStats.traitFlagCounts || {}).sort((a, b) => b[1] - a[1]).slice(0, 8)
@@ -3390,6 +3738,24 @@ export class IncubationScene extends Scene {
             bossRewards: [],
             mutationChoices: [],
             bossRewardChoices: [],
+            anchorShot: 0,
+            vampireSiphon: 0,
+            blackHolePearl: 0,
+            tinyOcto: 0,
+            hungryGems: 0,
+            bossMagnet: 0,
+            bossPressure: 0,
+            bossRewardGemBonus: 0,
+            routeEliteBonus: 0,
+            gemDropBonus: 0,
+            pressureBreakerBonus: 0,
+            waveIntervalMult: 1,
+            echoShot: 0,
+            presetFamily: null,
+            presetTint: null,
+            presetLabel: null,
+            appliedPresetMods: null,
+            shotCounter: 0,
             nextGemResonanceAt: 0,
             nextGoldenPrismAt: 0,
             shotPatternIndex: 0
@@ -3411,6 +3777,22 @@ export class IncubationScene extends Scene {
         if (index < breakpoints.length) return breakpoints[index];
         const extraLevels = index - breakpoints.length + 1;
         return Math.ceil(breakpoints[breakpoints.length - 1] + extraLevels * 75 + extraLevels * extraLevels * 10);
+    }
+
+    applyHungryGemPulse(x, y) {
+        const rank = this.tankRunStats?.hungryGems || 0;
+        if (!rank || !this.enemies) return;
+        const radius = 84 + rank * 28;
+        const damage = 1 + rank;
+        let hits = 0;
+        for (const enemy of this.enemies.getChildren()) {
+            if (!enemy.active) continue;
+            if (this.toroidalDistance(x, y, enemy.x, enemy.y) > radius) continue;
+            this.damageTankEnemy(enemy, damage);
+            hits += 1;
+            if (hits >= 4 + rank) break;
+        }
+        if (hits > 0) this.spawnPulseVisual(x, y, radius, 0xffd700);
     }
 
     addTankHuntXp(amount) {
@@ -3507,6 +3889,11 @@ export class IncubationScene extends Scene {
     getRequiredTankMutationRoles() {
         const roles = [];
         const stats = this.tankRunStats || {};
+        const routeBias = [...(this.getTankRouteRules().mutationBias || [])];
+        for (const role of routeBias) {
+            if (roles.length >= 1) break;
+            if (!roles.includes(role) && PhaserMath.Between(1, 100) <= 55) roles.push(role);
+        }
         const currentPower = Math.max(0, (TANK_BASE_FIRE_DELAY - stats.fireDelay) / 45) + Math.max(0, stats.damageBonus || 0) * 0.6 + Math.max(0, stats.extraProjectiles || 0) * 1.4 + Math.max(0, stats.pierce || 0) * 0.6 + Math.max(0, stats.split || 0) * 0.9 + Math.max(0, stats.chain || 0) * 1.1 + Math.max(0, stats.orbit || 0) * 0.7;
         const survivalPower = Math.max(0, (stats.maxHp || TANK_BASE_PLAYER_HP) - TANK_BASE_PLAYER_HP) + Math.max(0, stats.guardianCharges || 0) * 1.4 + Math.max(0, stats.freeze || 0) * 0.9 + Math.max(0, stats.fear || 0) * 0.8 + Math.max(0, stats.inkMines || 0) * 0.8 + Math.max(0, stats.spinPower || 0) * 0.6;
 
@@ -4877,6 +5264,7 @@ export class IncubationScene extends Scene {
         for (const offset of [-32, 0, 32]) {
             const angle = PhaserMath.DegToRad(offset) + PhaserMath.FloatBetween(0, Math.PI * 2);
             const shard = this.createTankBulletAt(x, y, angle, 0.34, 0.44);
+            if (!shard) return;
             shard.setTint(0xffd700);
             shard.setData("homing", Math.max(shard.getData("homing") || 0, 1));
             shard.setData("pierceLeft", 0);
@@ -4907,6 +5295,7 @@ export class IncubationScene extends Scene {
         if (this.tankHuntActive && this.tankRunStats.gemPulse > 0) this.applyGemPulse(gemX, gemY);
         if (this.tankHuntActive && this.tankRunStats.activeInteractionFlags?.goldenPrism) this.fireGoldenPrismReward(gemX, gemY);
         if (this.tankHuntActive && this.tankRunStats.activeSynergyIds?.includes("theme-treasure")) this.applyGemResonanceReward(gemX, gemY, type);
+        if (this.tankHuntActive) this.applyHungryGemPulse(gemX, gemY);
         if (this.tankHuntActive) this.addTankHuntXp(TANK_GEM_XP_VALUES[type] || 1);
         this.emitState();
         saveGame(this.save);
@@ -4933,23 +5322,29 @@ export class IncubationScene extends Scene {
 
         if (!asset) return;
         const alreadyUnlocked = isUnlocked(this.save, assetId);
-        const freeUnlock = ["rare", "legendary", "event"].includes(asset.rarity);
         let message = `${asset.name} discovered. Purchase it from the Shop.`;
+        let equippedNow = false;
+        const previousAssetId = this.save.loadout?.[asset.slot] || null;
+        const previousAsset = getAssetById(previousAssetId);
 
         if (alreadyUnlocked) {
             unlockAsset(this.save, assetId);
-            message = `${asset.name} signal reinforced.`;
-        } else if (freeUnlock) {
-            unlockAsset(this.save, assetId);
-            equipAsset(this.save, assetId);
-            message = `${asset.name} discovered, unlocked, and equipped.`;
+            equippedNow = equipAsset(this.save, assetId);
+            message = equippedNow
+                ? `${asset.name} equipped${previousAsset && previousAsset.id !== asset.id ? ` over ${previousAsset.name}` : ""}.`
+                : `${asset.name} signal reinforced.`;
         } else {
-            discoverAsset(this.save, assetId);
+            unlockAsset(this.save, assetId);
+            equippedNow = equipAsset(this.save, assetId);
+            message = equippedNow
+                ? `${asset.name} discovered, unlocked, and equipped${previousAsset && previousAsset.id !== asset.id ? ` over ${previousAsset.name}` : ""}.`
+                : `${asset.name} discovered and unlocked.`;
         }
 
         this.save.lifetime.manualTraitsCollected += 1;
         this.refreshStats();
         this.applyLoadoutSprites();
+        if (equippedNow) this.applyLiveTraitPickup(asset, previousAsset);
         this.emitState();
         saveGame(this.save);
         this.showCenterTraitText(message);
@@ -4959,12 +5354,38 @@ export class IncubationScene extends Scene {
 
     equipPersistent(assetId) {
         this.save = loadSave();
+        const asset = getAssetById(assetId);
+        const previousAsset = getAssetById(this.save.loadout?.[asset?.slot]);
         if (equipAsset(this.save, assetId)) {
             saveGame(this.save);
             this.refreshStats();
             this.applyLoadoutSprites();
+            this.applyLiveTraitPickup(asset, previousAsset);
             this.emitState();
         }
+    }
+
+    applyLiveQuickPreset(presetKey) {
+        if (!this.tankHuntActive || !PRESET_FAMILY_RULES[presetKey]) return;
+
+        const previousPresetFamily = this.tankRunStats.presetFamily;
+        this.rebuildLiveHuntLoadout(presetKey);
+        if (previousPresetFamily !== this.tankRunStats.presetFamily) this.tankRunStats.shotPatternIndex = 0;
+        this.game.events.emit("octoglyphs:notice", `${this.tankRunStats.presetLabel} style active. Loadout rebuilt cleanly; hunt mutations stayed active.`);
+        this.game.events.emit("octoglyphs:hunt-state", this.getTankHuntState());
+    }
+
+    applyLiveTraitPickup(asset, previousAsset = null) {
+        if (!asset || !this.tankHuntActive) return;
+
+        const previousPresetFamily = this.tankRunStats.presetFamily;
+        this.rebuildLiveHuntLoadout(previousPresetFamily);
+        if (previousPresetFamily !== this.tankRunStats.presetFamily) this.tankRunStats.shotPatternIndex = 0;
+
+        const swapText = previousAsset && previousAsset.id !== asset.id ? ` over ${previousAsset.name}` : "";
+        const presetText = this.tankRunStats.presetLabel ? ` ${this.tankRunStats.presetLabel} style active.` : "";
+        this.game.events.emit("octoglyphs:notice", `${asset.name} live trait applied${swapText}.${presetText} Loadout rebuilt cleanly; hunt mutations stayed active.`);
+        this.game.events.emit("octoglyphs:hunt-state", this.getTankHuntState());
     }
 
     refreshSave() {
