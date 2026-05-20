@@ -1,5 +1,28 @@
 # OctoGlyphs Devlog
 
+## 2026-05-20 — Trim OpenClaw Package Below ClawHub Limit
+
+**What**: Prepared OpenClaw plugin v0.1.2 after ClawHub v0.1.1 publish failed server-side near the multipart upload size limit.
+
+**Changes**:
+- Removed `octosong7.ogg` from the bundled game music set and from the runtime music catalog.
+- Bumped the OpenClaw plugin package and manifest from `0.1.1` to `0.1.2`.
+- Rebuilt the OpenClaw public bundle so ClawHub receives the smaller asset set.
+
+**Why**: ClawHub appears to choke near its 20 MB stream limit even when dry-run validation passes. Dropping one bundled track reduces the npm package from about 17.9 MB to about 15.8 MB while preserving gameplay, UI, and five music tracks.
+
+**Verification**:
+- `npm --prefix game test` passes.
+- `npm --prefix game run build` passes with only the existing Vite chunk-size warning.
+- `npm --prefix plugin/hosts/openclaw run build` passes.
+- `npm --prefix plugin/hosts/openclaw test` passes.
+- Hermes host passes `python3 -m py_compile __init__.py octoglyphs_sidecar.py` and `python3 -m unittest discover -s tests`.
+- `npm pack --dry-run` in `plugin/hosts/openclaw` reports `octoglyphs-openclaw-plugin-0.1.2.tgz` at about 15.8 MB.
+
+**What's next**: Commit and push v0.1.2, then retry `clawhub package publish OctoGlyphs/OctoGlyphs --family code-plugin --version 0.1.2 --source-path plugin/hosts/openclaw` from the Mac. If ClawHub still errors, remove or remote-host additional music tracks.
+
+---
+
 ## 2026-05-07 — Force Quick Build Bullet Identities
 
 **What**: Made the six quick-build buttons carry visible bullet identity, not just weighted trait selection.
