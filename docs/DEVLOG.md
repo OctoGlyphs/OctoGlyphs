@@ -1,5 +1,56 @@
 # OctoGlyphs Devlog
 
+## 2026-05-21 — Document public Claude Code npm install and Hermes release mirror
+
+### Changed
+- Updated the root README so Claude Code now leads with the verified public install path: `npm install -g @octoglyphs/claude-code` and `claude-octoglyphs`.
+- Added Claude Code troubleshooting notes for stale source-installed launchers and runtime port discovery through `~/.octoglyphs-claude-code.json`.
+- Expanded the Hermes README to make clear that Hermes support is a Python plugin, not an npm package.
+- Chose a Hermes-native distribution plan: publish `plugin/hosts/hermes` to a generated `OctoGlyphs/hermes-octoglyphs` release mirror so users can run `hermes plugins install OctoGlyphs/hermes-octoglyphs`.
+- Added `scripts/publish-hermes-plugin.sh` to build the shared game, sync it into the Hermes plugin, run Python checks, copy the plugin root into the mirror checkout, and optionally push it.
+
+### Why
+- The clean new-user Claude Code test passed from npm, so docs should stop treating source install as the primary Claude Code path.
+- The Hermes test confusion came from treating the Hermes host as a Node package. The docs now explicitly prevent that path.
+- Hermes expects `plugin.yaml` and `__init__.py` at the installed repository root. A generated mirror gives Hermes users the standard install flow without creating a second hand-maintained codebase.
+
+### Verified
+- Clean global npm install of `@octoglyphs/claude-code@0.1.0` works and spawns gems during Claude Code prompt activity.
+- `cd plugin/hosts/claude-code && npm test` passes.
+- `cd plugin/hosts/hermes && python3 -m py_compile __init__.py octoglyphs_sidecar.py && python3 -m unittest discover -s tests` passes.
+- `python` is not available on this Linux machine, so Hermes docs should prefer `python3` where exact commands matter.
+
+### Next
+- Create or connect the `OctoGlyphs/hermes-octoglyphs` repository.
+- Run `./scripts/publish-hermes-plugin.sh --push` once the mirror remote exists.
+- Test Hermes with the real new-user command: `hermes plugins install OctoGlyphs/hermes-octoglyphs`.
+
+## 2026-05-20 — Prepare Claude Code npm package
+
+### Changed
+- Renamed the Claude Code host package from `@octoglyphs/claude-code-plugin` to `@octoglyphs/claude-code` for a cleaner public install command.
+- Added npm package metadata for repository, homepage, bugs, keywords, public publish config, and `prepack` build.
+- Kept the global binary as `claude-octoglyphs` so users can launch Claude Code with the OctoGlyphs plugin attached from any directory.
+- Updated the Claude Code README to lead with `npm install -g @octoglyphs/claude-code`, while keeping source install and local plugin-dir flows.
+- Regenerated the Claude Code package lock after the package rename.
+
+### Why
+- Claude Code does not have a single ClawHub-style store, so npm plus GitHub is the lowest-friction public install flow for OctoGlyphs.
+- The shorter package name makes the install command read cleanly: `npm install -g @octoglyphs/claude-code` followed by `claude-octoglyphs`.
+
+### Verification
+- `npm test` passes in `plugin/hosts/claude-code`.
+- `npm pack --dry-run` succeeds and reports `@octoglyphs/claude-code@0.1.0` at about 7.0 MB packed and 9.5 MB unpacked.
+- Local tarball install with a temporary global prefix creates the `claude-octoglyphs` binary successfully.
+- Running the temporary binary with `--version` passes through to Claude Code and prints `2.1.128 (Claude Code)`.
+- `npm publish --dry-run --access public` succeeds; real publish is blocked only by npm login.
+
+### Next
+- Log into npm with an account that has access to the `@octoglyphs` scope.
+- Run `npm publish --access public` from `plugin/hosts/claude-code`.
+- Verify with `npm view @octoglyphs/claude-code version bin --json`, then test `npm install -g @octoglyphs/claude-code` on a clean machine.
+
+---
 ## 2026-05-20 — OpenClaw v0.1.4 restores two bundled songs
 
 ### Changed

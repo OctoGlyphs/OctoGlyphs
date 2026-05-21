@@ -4,7 +4,55 @@ Prompt Fed Octo Companion for Claude Code.
 
 OctoGlyphs turns Claude Code activity into a tiny aquarium companion. Prompts feed the octo, tool use drops gems, completed responses add session energy, and git commits can trigger special progression. It is designed to be privacy-first: the plugin only emits sanitized metadata and never sends prompt text, assistant text, code, file contents, diffs, stdout, stderr, or secrets to the game.
 
-This host is experimental while the OpenClaw plugin remains the launch path.
+## Install from npm
+
+```bash
+npm install -g @octoglyphs/claude-code
+```
+
+Then start Claude Code with OctoGlyphs attached from any directory:
+
+```bash
+claude-octoglyphs
+```
+
+Any extra arguments are passed through to Claude Code, for example:
+
+```bash
+claude-octoglyphs --model sonnet
+```
+
+Default URL:
+
+```text
+http://localhost:18791/octoglyphs
+```
+
+If that port is already occupied, the plugin automatically falls back to the next available local port. The actual URL is written to:
+
+```text
+~/.octoglyphs-claude-code.json
+```
+
+## Source install
+
+```bash
+git clone https://github.com/OctoGlyphs/OctoGlyphs.git
+cd OctoGlyphs/plugin/hosts/claude-code
+npm install
+npm test
+npm run install:launcher
+claude-octoglyphs
+```
+
+If `claude-octoglyphs` already exists from an old source install and npm refuses to overwrite it, remove the stale launcher and reinstall:
+
+```bash
+rm -f ~/.local/bin/claude-octoglyphs
+npm install -g @octoglyphs/claude-code
+```
+
+If `claude-octoglyphs` is not found after source installation, add `~/.local/bin` to your shell `PATH`.
 
 ## What it captures
 
@@ -31,10 +79,9 @@ OctoGlyphs does not read or store:
 
 ## Local test flow
 
-From the repository root:
+From this directory:
 
 ```bash
-cd plugin/hosts/claude-code
 npm test
 ```
 
@@ -42,38 +89,6 @@ To try it in Claude Code without installing the launcher, load this folder as a 
 
 ```bash
 claude --plugin-dir .
-```
-
-For source installs, install the `claude-octoglyphs` launcher once:
-
-```bash
-npm run install:launcher
-```
-
-Then start Claude Code with OctoGlyphs attached from any directory:
-
-```bash
-claude-octoglyphs
-```
-
-Any extra arguments are passed through to Claude Code, for example:
-
-```bash
-claude-octoglyphs --model sonnet
-```
-
-If `claude-octoglyphs` is not found after installation, add `~/.local/bin` to your shell `PATH`.
-
-Default URL:
-
-```text
-http://localhost:18791/octoglyphs
-```
-
-If that port is already occupied, the plugin automatically falls back to the next available local port. The actual URL is written to:
-
-```text
-~/.octoglyphs-claude-code.json
 ```
 
 The local health endpoint uses the same port, for example:

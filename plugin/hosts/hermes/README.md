@@ -17,6 +17,22 @@ It never sends raw prompts, assistant responses, file contents, tool arguments, 
 
 The plugin does not inject context into Hermes, even though Hermes allows `pre_llm_call` plugins to do so.
 
+## New-user install
+
+Hermes support is a Python plugin, not an npm package. Do not run `npm install` in this folder.
+
+A normal Hermes plugin install clones a Git repository into `~/.hermes/plugins/`. Hermes expects the installed repository root to contain the plugin files, especially `plugin.yaml` and `__init__.py`.
+
+The intended new-user install is:
+
+```bash
+hermes plugins install OctoGlyphs/hermes-octoglyphs
+hermes plugins enable octoglyphs
+hermes
+```
+
+`OctoGlyphs/hermes-octoglyphs` should be a generated release mirror of this folder. Keep source changes in the main OctoGlyphs monorepo, then publish this folder to the Hermes mirror when releasing. That gives Hermes users the standard install flow without creating a second hand-maintained codebase.
+
 ## Local install for testing
 
 From this repository:
@@ -24,7 +40,7 @@ From this repository:
 ```bash
 mkdir -p ~/.hermes/plugins
 rm -rf ~/.hermes/plugins/octoglyphs
-cp -R /home/crai/Desktop/octoglyphs-release/plugin/hosts/hermes ~/.hermes/plugins/octoglyphs
+cp -R ~/Desktop/octoglyphs-release/plugin/hosts/hermes ~/.hermes/plugins/octoglyphs
 hermes plugins enable octoglyphs
 hermes
 ```
@@ -43,17 +59,27 @@ Inside Hermes, you can also run:
 
 That prints the tank URL, health URL, sidecar state, and privacy reminder.
 
-## Fresh-machine install target
+## Release mirror design
 
-Once published in a layout Hermes can install directly, expected flow is:
+The current repository is multi-host: OpenClaw, Claude Code, and Hermes live under `plugin/hosts/`. The Hermes installer clones a Git repository and reads `plugin.yaml` from the cloned repository root. It does not currently install a subdirectory from a larger repository.
 
-```bash
-hermes plugins install OctoGlyphs/OctoGlyphs
-hermes plugins enable octoglyphs
-hermes
+Use a dedicated Hermes release mirror so the installed repository root is exactly the Hermes plugin root:
+
+```text
+plugin.yaml
+__init__.py
+octoglyphs_sidecar.py
+public/
+tests/
 ```
 
-If Hermes requires the plugin manifest at the repository root for GitHub installs, use the local copy flow above until we split or package this host plugin.
+The monorepo remains the source of truth. Publish the mirror with:
+
+```bash
+./scripts/publish-hermes-plugin.sh --push
+```
+
+Set `HERMES_MIRROR_URL` or `HERMES_MIRROR_DIR` if you need a different remote or local checkout path.
 
 ## Event mapping
 
@@ -74,9 +100,9 @@ on_session_reset      -> session.started
 Run static checks and unit tests from the plugin folder:
 
 ```bash
-cd /home/crai/Desktop/octoglyphs-release/plugin/hosts/hermes
-python -m py_compile __init__.py octoglyphs_sidecar.py
-python -m unittest discover -s tests
+cd ~/Desktop/octoglyphs-release/plugin/hosts/hermes
+python3 -m py_compile __init__.py octoglyphs_sidecar.py
+python3 -m unittest discover -s tests
 ```
 
 Manual test:
@@ -84,7 +110,7 @@ Manual test:
 ```bash
 mkdir -p ~/.hermes/plugins
 rm -rf ~/.hermes/plugins/octoglyphs
-cp -R /home/crai/Desktop/octoglyphs-release/plugin/hosts/hermes ~/.hermes/plugins/octoglyphs
+cp -R ~/Desktop/octoglyphs-release/plugin/hosts/hermes ~/.hermes/plugins/octoglyphs
 hermes plugins enable octoglyphs
 hermes
 ```

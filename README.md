@@ -51,9 +51,39 @@ The plugin must not emit:
 
 The tank receives activity metadata through the OpenClaw plugin event stream. Production builds do not expose the old browser-console reward emitter, so casual console spoofing cannot simply call a public `window.octoglyphs.emit` reward API.
 
-## Current OpenClaw install flow
+## Supported host install flows
 
-Until OctoGlyphs is published to the normal OpenClaw plugin registry or npm, install from this repository.
+### Claude Code
+
+Claude Code has the simplest new-user install path because OctoGlyphs is published on npm:
+
+```bash
+npm install -g @octoglyphs/claude-code
+claude-octoglyphs
+```
+
+The launcher starts Claude Code with the OctoGlyphs plugin attached. Open the tank URL printed by Claude Code, or check the runtime file if the default port is busy:
+
+```bash
+cat ~/.octoglyphs-claude-code.json
+```
+
+Default tank URL:
+
+```text
+http://localhost:18791/octoglyphs
+```
+
+If `claude-octoglyphs` already exists from an old source install, remove the stale launcher and reinstall:
+
+```bash
+rm -f ~/.local/bin/claude-octoglyphs
+npm install -g @octoglyphs/claude-code
+```
+
+### OpenClaw
+
+Until OctoGlyphs is published to the normal OpenClaw plugin registry, install from this repository.
 
 Requirements:
 
@@ -91,14 +121,54 @@ OpenClaw will reply with the OctoGlyphs tank link and stream status. Open the ta
 
 You do not need to run the Vite development server for the OpenClaw plugin install. The Phaser game is bundled into the OpenClaw plugin package.
 
+### Hermes
+
+Hermes support is a Python plugin, not an npm package. The intended new-user flow is Hermes-native:
+
+```bash
+hermes plugins install OctoGlyphs/hermes-octoglyphs
+hermes plugins enable octoglyphs
+hermes
+```
+
+Then, inside Hermes, run:
+
+```text
+/octoglyphs
+```
+
+Default Hermes tank URL:
+
+```text
+http://localhost:18792/octoglyphs
+```
+
+The `OctoGlyphs/hermes-octoglyphs` repository should be treated as a generated release mirror of `plugin/hosts/hermes`, not as a second hand-maintained codebase. Source changes stay in this monorepo; the mirror only exists so Hermes users can install OctoGlyphs with the same `hermes plugins install owner/repo` flow they use for any other Hermes plugin.
+
+For local testing from this repository before publishing the mirror:
+
+```bash
+git clone https://github.com/OctoGlyphs/OctoGlyphs.git
+cd OctoGlyphs
+mkdir -p ~/.hermes/plugins
+rm -rf ~/.hermes/plugins/octoglyphs
+cp -R plugin/hosts/hermes ~/.hermes/plugins/octoglyphs
+hermes plugins enable octoglyphs
+hermes
+```
+
+
 ## Normal use
 
 After installation:
 
-1. Run `/octoglyphs` in OpenClaw.
-2. Open the tank link from the response.
+1. Start OctoGlyphs from your host:
+   - Claude Code: run `claude-octoglyphs`.
+   - OpenClaw: run `/octoglyphs` inside OpenClaw.
+   - Hermes: run `/octoglyphs` inside Hermes after enabling the plugin.
+2. Open the tank link printed by the host, or use the documented localhost URL for that host.
 3. Keep the tank visible or in the background while you work.
-4. Send prompts and use tools in OpenClaw.
+4. Send prompts and use tools normally.
 5. Watch the octo collect gems and grow.
 6. Open the shop/loadout panels to spend gems and equip traits.
 7. Use Tank Hunt when charged to play short active combat runs.
@@ -124,10 +194,12 @@ The current release focuses on the OpenClaw companion plugin. The broader design
 ```text
 game/                         Shared Phaser/Vite OctoGlyphs game.
 plugin/hosts/openclaw/         OpenClaw plugin adapter and package.
+plugin/hosts/claude-code/      Claude Code npm package and launcher.
+plugin/hosts/hermes/           Hermes Python plugin adapter.
 docs/                         GDD, build notes, asset notes, and devlog.
 ```
 
-Game improvements belong in `game/` so future host plugins can reuse them. OpenClaw-specific code belongs in `plugin/hosts/openclaw/`.
+Game improvements belong in `game/` so host plugins can reuse them. Host-specific code belongs in the matching `plugin/hosts/*/` folder.
 
 ## Development
 
@@ -138,6 +210,22 @@ cd game
 npm install
 npm test
 npm run build
+```
+
+Run Claude Code plugin checks:
+
+```bash
+cd plugin/hosts/claude-code
+npm install
+npm test
+```
+
+Run Hermes plugin checks:
+
+```bash
+cd plugin/hosts/hermes
+python3 -m py_compile __init__.py octoglyphs_sidecar.py
+python3 -m unittest discover -s tests
 ```
 
 Run OpenClaw plugin checks:

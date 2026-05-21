@@ -1,17 +1,36 @@
 {
-    "name": "@octoglyphs/claude-code-plugin",
+    "name": "@octoglyphs/claude-code",
     "version": "0.1.0",
-    "description": "Privacy-first OctoGlyphs companion plugin for Claude Code.",
+    "description": "Privacy-first OctoGlyphs companion plugin and launcher for Claude Code.",
     "type": "module",
     "license": "MIT",
     "private": false,
+    "homepage": "https://github.com/OctoGlyphs/OctoGlyphs#readme",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/OctoGlyphs/OctoGlyphs.git",
+        "directory": "plugin/hosts/claude-code"
+    },
+    "bugs": {
+        "url": "https://github.com/OctoGlyphs/OctoGlyphs/issues"
+    },
+    "keywords": [
+        "octoglyphs",
+        "claude-code",
+        "claude",
+        "plugin",
+        "companion",
+        "aquarium",
+        "privacy-first"
+    ],
     "scripts": {
         "copy:game": "rm -rf public && mkdir -p public && cp -R ../../../game/dist/. public/ && rm -rf public/assets/raw/Halloween\\ assets public/assets/raw/Enemies public/assets/raw/gems public/assets/raw/Old\\ cycles public/assets/raw/UI/Play public/assets/raw/UI/Settings public/assets/raw/Backgrounds/deep2.png public/assets/raw/Backgrounds/deep3.png public/assets/raw/Backgrounds/deep4.png public/assets/raw/Backgrounds/shallow2.png public/assets/raw/Backgrounds/shallow3.png public/assets/raw/Backgrounds/shallow4.png public/assets/raw/Backgrounds/mid*.png public/assets/raw/Backgrounds/newbg*.png",
         "build:game": "npm --prefix ../../../game install && npm --prefix ../../../game run build -- --logLevel warn",
         "build": "npm run build:game && npm run copy:game",
         "install:launcher": "node scripts/install-launcher.mjs",
         "test": "npm run build && node tests/claudeCodePlugin.test.mjs",
-        "pack:local": "npm pack"
+        "pack:local": "npm pack",
+        "prepack": "npm run build"
     },
     "bin": {
         "claude-octoglyphs": "./bin/claude-octoglyphs.mjs"
@@ -26,5 +45,8 @@
     ],
     "engines": {
         "node": ">=18"
+    },
+    "publishConfig": {
+        "access": "public"
     }
 }
