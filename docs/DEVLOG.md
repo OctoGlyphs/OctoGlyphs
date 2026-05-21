@@ -1,5 +1,20 @@
 # OctoGlyphs Devlog
 
+## 2026-05-21 — Remove Hermes debug hook prints
+
+### Changed
+- Removed temporary Hermes lifecycle debug prints from `on_session_start`, `pre_llm_call`, and `post_llm_call`.
+- Kept the user-facing Hermes tank link message at session start.
+
+### Why
+- The hook-fired messages were development-only diagnostics and looked noisy in normal Hermes sessions.
+- Final release should surface only useful OctoGlyphs status and tank access information.
+
+### Next
+- Verify Hermes still feeds the tank without printing hook debug lines.
+- Publish the Hermes mirror after tests pass so new installs receive the quieter plugin.
+
+---
 ## 2026-05-21 — Clarify install, contribution, and release flow
 
 ### Changed
