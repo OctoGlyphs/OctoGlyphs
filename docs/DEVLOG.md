@@ -8,21 +8,23 @@
 - Expanded the Hermes README to make clear that Hermes support is a Python plugin, not an npm package.
 - Chose a Hermes-native distribution plan: publish `plugin/hosts/hermes` to a generated `OctoGlyphs/hermes-octoglyphs` release mirror so users can run `hermes plugins install OctoGlyphs/hermes-octoglyphs`.
 - Added `scripts/publish-hermes-plugin.sh` to build the shared game, sync it into the Hermes plugin, run Python checks, copy the plugin root into the mirror checkout, and optionally push it.
+- Updated the Hermes mirror script to exclude Python cache artifacts from the generated release repo.
 
 ### Why
 - The clean new-user Claude Code test passed from npm, so docs should stop treating source install as the primary Claude Code path.
 - The Hermes test confusion came from treating the Hermes host as a Node package. The docs now explicitly prevent that path.
 - Hermes expects `plugin.yaml` and `__init__.py` at the installed repository root. A generated mirror gives Hermes users the standard install flow without creating a second hand-maintained codebase.
+- Python verification creates `__pycache__` locally; generated release mirrors should not publish runtime cache files.
 
 ### Verified
 - Clean global npm install of `@octoglyphs/claude-code@0.1.0` works and spawns gems during Claude Code prompt activity.
 - `cd plugin/hosts/claude-code && npm test` passes.
 - `cd plugin/hosts/hermes && python3 -m py_compile __init__.py octoglyphs_sidecar.py && python3 -m unittest discover -s tests` passes.
 - `python` is not available on this Linux machine, so Hermes docs should prefer `python3` where exact commands matter.
+- `bash -n scripts/publish-hermes-plugin.sh` passes after adding release-mirror cache exclusions.
 
 ### Next
-- Create or connect the `OctoGlyphs/hermes-octoglyphs` repository.
-- Run `./scripts/publish-hermes-plugin.sh --push` once the mirror remote exists.
+- Push the generated `OctoGlyphs/hermes-octoglyphs` repository with a PAT that has contents read/write access.
 - Test Hermes with the real new-user command: `hermes plugins install OctoGlyphs/hermes-octoglyphs`.
 
 ## 2026-05-20 — Prepare Claude Code npm package

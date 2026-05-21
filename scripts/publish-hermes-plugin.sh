@@ -37,7 +37,11 @@ fi
 
 echo "Copying Hermes plugin root into release mirror..."
 find "$MIRROR_DIR" -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
-cp -R "$HERMES_SRC/." "$MIRROR_DIR/"
+rsync -a \
+    --exclude '__pycache__/' \
+    --exclude '*.pyc' \
+    --exclude '.pytest_cache/' \
+    "$HERMES_SRC/" "$MIRROR_DIR/"
 
 (
     cd "$MIRROR_DIR"
