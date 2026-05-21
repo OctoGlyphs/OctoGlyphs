@@ -1,6 +1,6 @@
 {
     "name": "@octoglyphs/openclaw-plugin",
-    "version": "0.1.4",
+    "version": "0.1.5",
     "description": "Privacy-first OctoGlyphs companion plugin for OpenClaw.",
     "type": "module",
     "license": "MIT",

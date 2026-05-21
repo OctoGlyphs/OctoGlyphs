@@ -5,6 +5,9 @@ export const BACKGROUND_TRACKS = [
 
 export const MUSIC_TRACKS = [
     { key: "music-octosong-1", file: "octosong1.ogg" },
+    { key: "music-octosong-2", file: "octosong2.ogg" },
+    { key: "music-octosong-3", file: "octosong3.ogg" },
+    { key: "music-octosong-4", file: "octosong4.ogg" },
     { key: "music-octosong-5", file: "octosong5.ogg" }
 ];
 

@@ -1,5 +1,29 @@
 # OctoGlyphs Devlog
 
+## 2026-05-21 — Prepare OpenClaw v0.1.5 five-song ClawHub test
+
+### Changed
+- Added five compressed local OpenClaw music tracks: `octosong1.ogg` through `octosong5.ogg`.
+- Rebuilt the shared game music catalog so the runtime rotates across songs 1 through 5.
+- Bumped OpenClaw package and manifest metadata from `0.1.4` to `0.1.5`.
+- Rebuilt the OpenClaw public bundle from the shared game output for a ClawHub publish test.
+
+### Why
+- We want all plugin hosts to converge on a single release number with the full five-song OctoGlyphs feel.
+- ClawHub accepted the no-music `0.1.3` build but rejected earlier music attempts, so `0.1.5` is a targeted test of whether five more aggressively compressed local songs can pass under the real publish path.
+
+### Verification
+- `npm --prefix game test` passes.
+- `npm --prefix plugin/hosts/openclaw test` passes.
+- `npm pack --dry-run` in `plugin/hosts/openclaw` reports `octoglyphs-openclaw-plugin-0.1.5.tgz` at about 12.7 MB packed and 15.1 MB unpacked.
+
+### Next
+- Commit and push the OpenClaw-only `0.1.5` candidate.
+- Retry ClawHub publish from the Mac.
+- If ClawHub accepts `0.1.5`, align Claude Code and Hermes to the same five-song `0.1.5` release line.
+- If ClawHub rejects it, lower audio bitrate further or test fewer bundled songs before aligning the other hosts.
+
+---
 ## 2026-05-21 — Remove Hermes debug hook prints
 
 ### Changed
