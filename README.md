@@ -53,9 +53,28 @@ The tank receives activity metadata through the OpenClaw plugin event stream. Pr
 
 ## Supported host install flows
 
+### OpenClaw
+
+OpenClaw users install through the normal OpenClaw plugin flow:
+
+```bash
+openclaw plugins install @octoglyphs/openclaw-plugin@0.1.4
+openclaw gateway restart
+```
+
+Then, inside OpenClaw, run:
+
+```text
+/octoglyphs
+```
+
+OpenClaw will reply with the OctoGlyphs tank link and stream status. Open the tank link, keep it beside OpenClaw, and use OpenClaw normally.
+
+You do not need to run the Vite development server for the OpenClaw plugin install. The Phaser game is bundled into the OpenClaw plugin package.
+
 ### Claude Code
 
-Claude Code has the simplest new-user install path because OctoGlyphs is published on npm:
+Claude Code users install OctoGlyphs from npm:
 
 ```bash
 npm install -g @octoglyphs/claude-code
@@ -81,49 +100,9 @@ rm -f ~/.local/bin/claude-octoglyphs
 npm install -g @octoglyphs/claude-code
 ```
 
-### OpenClaw
-
-Until OctoGlyphs is published to the normal OpenClaw plugin registry, install from this repository.
-
-Requirements:
-
-- OpenClaw installed.
-- Node.js 22 or newer.
-- npm.
-- Git.
-
-Clone and package the plugin:
-
-```bash
-git clone https://github.com/OctoGlyphs/OctoGlyphs.git
-cd OctoGlyphs/plugin/hosts/openclaw
-
-npm install
-npm run typecheck
-npm test
-npm run pack:local
-```
-
-Install the generated package into OpenClaw:
-
-```bash
-openclaw plugins install ./octoglyphs-openclaw-plugin-0.1.0.tgz --force
-openclaw gateway restart
-```
-
-Then, inside OpenClaw, run:
-
-```text
-/octoglyphs
-```
-
-OpenClaw will reply with the OctoGlyphs tank link and stream status. Open the tank link, keep it beside OpenClaw, and use OpenClaw normally.
-
-You do not need to run the Vite development server for the OpenClaw plugin install. The Phaser game is bundled into the OpenClaw plugin package.
-
 ### Hermes
 
-Hermes support is a Python plugin, not an npm package. The intended new-user flow is Hermes-native:
+Hermes support is a Python plugin, not an npm package. Hermes users install from the generated Hermes release mirror:
 
 ```bash
 hermes plugins install OctoGlyphs/hermes-octoglyphs
@@ -156,7 +135,6 @@ cp -R plugin/hosts/hermes ~/.hermes/plugins/octoglyphs
 hermes plugins enable octoglyphs
 hermes
 ```
-
 
 ## Normal use
 
@@ -262,12 +240,28 @@ http://localhost:5173
 
 The development server keeps debug event helpers available for local testing. Production plugin builds do not expose those reward helpers.
 
+## Contributing
+
+OctoGlyphs is open for contributions in the main `OctoGlyphs/OctoGlyphs` repository.
+
+The rule is: change the shared game once, then release it through every host wrapper.
+
+- Gameplay, visual, audio, progression, and Tank Hunt work belongs in `game/`.
+- OpenClaw-specific work belongs in `plugin/hosts/openclaw/`.
+- Claude Code-specific work belongs in `plugin/hosts/claude-code/`.
+- Hermes-specific work belongs in `plugin/hosts/hermes/`.
+- Generated release mirrors, including `OctoGlyphs/hermes-octoglyphs`, should redirect issues and pull requests back to the main repo.
+
+Read `CONTRIBUTING.md` for contribution rules and `docs/RELEASE.md` for the one-codebase, three-host release flow.
+
 ## Security and cheating note
 
-OctoGlyphs is a local companion game, not a server-authoritative competitive economy. Browser state can never be made fully cheat-proof when it runs on the user's machine. The current protection focuses on the highest-value low-risk step: production builds do not expose public browser reward APIs, and normal rewards flow through the OpenClaw plugin stream instead.
+OctoGlyphs is a local companion game, not a server-authoritative competitive economy. Browser state can never be made fully cheat-proof when it runs on the user's machine. The current protection focuses on the highest-value low-risk step: production builds do not expose public browser reward APIs, and normal rewards flow through the host plugin stream instead.
 
 If future features add leaderboards, trading, public achievements, or shared economies, those systems should use server-authoritative validation rather than trusting local browser storage.
 
+Privacy and security issues should follow `SECURITY.md`.
+
 ## License
 
-MIT. Contributions are welcome once the repository is public.
+MIT. Contributions are welcome.

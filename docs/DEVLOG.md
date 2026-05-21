@@ -1,5 +1,26 @@
 # OctoGlyphs Devlog
 
+## 2026-05-21 — Clarify install, contribution, and release flow
+
+### Changed
+- Updated the root README so all three host install flows lead with current public user paths: OpenClaw via `@octoglyphs/openclaw-plugin@0.1.4`, Claude Code via npm, and Hermes via the generated `OctoGlyphs/hermes-octoglyphs` mirror.
+- Added `CONTRIBUTING.md` with the one-codebase contribution model, privacy boundary, test commands, pull request checklist, and asset rights note.
+- Added `SECURITY.md` to document metadata-only collection rules, forbidden content, reporting expectations, and token hygiene.
+- Added `docs/RELEASE.md` to document how one shared `game/` build ships through OpenClaw, Claude Code, and Hermes.
+- Updated OpenClaw and Hermes host READMEs to reflect current user install and contribution routing.
+- Synced the checked-in Hermes public bundle with the already-published Hermes release mirror so the main monorepo matches what Hermes users install.
+
+### Why
+- New contributors should have one obvious place to improve OctoGlyphs: the main `OctoGlyphs/OctoGlyphs` repo.
+- Users should not need to understand monorepo internals or generated mirrors to install the plugin for their host.
+- The local Hermes bundle had been regenerated and already published to the Hermes mirror, but the main repo still had older checked-in generated files. Committing the sync removes that confusing mismatch.
+
+### Next
+- Add a top-level release script that builds the shared game once, syncs all host bundles, runs all host checks, and prints the exact publish commands.
+- Consider GitHub issue templates for bug reports, gameplay ideas, plugin host issues, asset contributions, and new host requests.
+
+---
+
 ## 2026-05-21 — Document public Claude Code npm install and Hermes release mirror
 
 ### Changed

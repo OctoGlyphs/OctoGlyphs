@@ -4,12 +4,12 @@ This is the native OpenClaw adapter for OctoGlyphs.
 
 OctoGlyphs is a private AI-work Tamagotchi sidecar. The plugin observes safe OpenClaw activity metadata and sends sanitized events to the OctoGlyphs companion tank.
 
-## User install target
+## User install
 
-Public users should eventually install with the normal OpenClaw plugin flow:
+OpenClaw users install through the normal OpenClaw plugin flow:
 
 ```bash
-openclaw plugins install @octoglyphs/openclaw-plugin
+openclaw plugins install @octoglyphs/openclaw-plugin@0.1.4
 openclaw gateway restart
 ```
 
